@@ -58,12 +58,41 @@ const handleTextExtraction = async (request, sendResponse) => {
 // Handle AI requests (using Groq API)
 const handleAIRequest = async (request, sendResponse) => {
   try {
-    // TODO: Implement secure API call to Groq
-    // NOTE: API keys should not be stored in client-side code!
-    sendResponse({ 
-      success: true, 
-      message: "AI request handling not yet implemented" 
-    });
+    console.log("Processing AI request:", request);
+    
+    // In a real implementation, we would call the Groq API securely
+    // For now, we'll simulate different responses based on the message content
+    
+    const userMessage = request.message || "";
+    let response = "";
+    
+    if (userMessage.toLowerCase().includes("hello") || userMessage.toLowerCase().includes("hi")) {
+      response = "Hello! I'm GreecodePro.ai assistant. How can I help you with your coding or technical interview today?";
+    }
+    else if (userMessage.toLowerCase().includes("interview")) {
+      response = "Preparing for interviews can be challenging. I can help you practice coding questions, review algorithms, or discuss common interview topics. What specific area would you like to focus on?";
+    }
+    else if (userMessage.toLowerCase().includes("javascript") || userMessage.toLowerCase().includes("js")) {
+      response = "JavaScript is a versatile language! Are you looking for help with specific concepts like closures, promises, or the event loop? Or perhaps you'd like to practice some JavaScript coding challenges?";
+    }
+    else if (userMessage.toLowerCase().includes("react")) {
+      response = "React is a popular frontend library. Would you like to discuss React hooks, component lifecycle, state management, or performance optimization techniques?";
+    }
+    else if (userMessage.toLowerCase().includes("algorithm") || userMessage.toLowerCase().includes("complexity")) {
+      response = "Understanding algorithms and time complexity is crucial for technical interviews. I can explain concepts like Big O notation, sorting algorithms, or help you solve specific algorithmic challenges.";
+    }
+    else {
+      response = `I've processed your message: "${userMessage}". As an AI assistant specialized in helping with technical interviews and coding challenges, I'd be happy to provide guidance on programming concepts, algorithm problems, or interview preparation strategies.`;
+    }
+    
+    // Simulate network delay for a more realistic experience
+    setTimeout(() => {
+      sendResponse({ 
+        success: true, 
+        message: response 
+      });
+    }, 500);
+    
   } catch (error) {
     console.error("AI request error:", error);
     sendResponse({ success: false, error: "AI request failed" });

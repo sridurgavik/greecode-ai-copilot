@@ -1,9 +1,12 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, FileText, Copy, BookOpen, Search } from "lucide-react";
+import GroqChat from "./GroqChat";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Helper function to safely interact with Chrome API
 const useChromeAPI = () => {
@@ -51,6 +54,7 @@ const ProSection = () => {
   const [selectedText, setSelectedText] = useState<string>("");
   const [aiResponse, setAiResponse] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>("tools");
   const { toast } = useToast();
   const { isExtensionEnvironment, sendTabMessage } = useChromeAPI();
   
@@ -204,85 +208,98 @@ const ProSection = () => {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Pro Tools</CardTitle>
-          <CardDescription>
-            Extract text from websites and analyze with AI
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={handleExtractSelected}>
-              <FileText className="mr-2 h-4 w-4" />
-              Extract Selected
-            </Button>
-            <Button onClick={handleReadPage} disabled={isLoading}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              Read Page
-            </Button>
-            <Button onClick={handleSummarize} disabled={isLoading}>
-              <FileText className="mr-2 h-4 w-4" />
-              Summarize
-            </Button>
-            <Button onClick={handleAskQuestion} disabled={isLoading}>
-              <Search className="mr-2 h-4 w-4" />
-              Ask Question
-            </Button>
-          </div>
-
-          {selectedText && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Extracted Content</h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleCopyText(selectedText)}
-                >
-                  <Copy className="h-4 w-4" />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="tools">Extract Tools</TabsTrigger>
+          <TabsTrigger value="chat">AI Chat</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="tools" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pro Tools</CardTitle>
+              <CardDescription>
+                Extract text from websites and analyze with AI
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={handleExtractSelected}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Extract Selected
+                </Button>
+                <Button onClick={handleReadPage} disabled={isLoading}>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Read Page
+                </Button>
+                <Button onClick={handleSummarize} disabled={isLoading}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Summarize
+                </Button>
+                <Button onClick={handleAskQuestion} disabled={isLoading}>
+                  <Search className="mr-2 h-4 w-4" />
+                  Ask Question
                 </Button>
               </div>
-              <Textarea
-                value={selectedText}
-                onChange={(e) => setSelectedText(e.target.value)}
-                className="min-h-[100px]"
-                placeholder="Extracted text will appear here..."
-              />
-            </div>
-          )}
 
-          {isLoading && (
-            <div className="flex justify-center py-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-            </div>
-          )}
-
-          {aiResponse && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">AI Response</h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleCopyText(aiResponse)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="rounded-md bg-muted p-4">
-                <div className="flex items-start space-x-2">
-                  <MessageSquare className="mt-0.5 h-4 w-4 text-primary" />
-                  <div className="text-sm">{aiResponse}</div>
+              {selectedText && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Extracted Content</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleCopyText(selectedText)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={selectedText}
+                    onChange={(e) => setSelectedText(e.target.value)}
+                    className="min-h-[100px]"
+                    placeholder="Extracted text will appear here..."
+                  />
                 </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="text-xs text-muted-foreground">
-          Make sure you're on the webpage you want to analyze
-        </CardFooter>
-      </Card>
+              )}
+
+              {isLoading && (
+                <div className="flex justify-center py-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+                </div>
+              )}
+
+              {aiResponse && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">AI Response</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleCopyText(aiResponse)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="rounded-md bg-muted p-4">
+                    <div className="flex items-start space-x-2">
+                      <MessageSquare className="mt-0.5 h-4 w-4 text-primary" />
+                      <div className="text-sm">{aiResponse}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="text-xs text-muted-foreground">
+              Make sure you're on the webpage you want to analyze
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="chat" className="space-y-4">
+          <GroqChat />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

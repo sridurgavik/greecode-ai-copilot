@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, Copy, FileUp } from "lucide-react";
+import { CalendarIcon, Copy, FileUp, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+
+// Types
+interface PasskeyData {
+  passkey: string;
+  job_role: string;
+  company: string;
+  is_used: boolean;
+  user_id: string;
+}
 
 const CopilotSection = () => {
   const [activeTab, setActiveTab] = useState<string>("enter");
@@ -23,55 +33,127 @@ const CopilotSection = () => {
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [passkeyError, setPasskeyError] = useState<string>("");
+  const [paymentComplete, setPaymentComplete] = useState<boolean>(false);
+  const [resumeUrl, setResumeUrl] = useState<string>("");
   const { toast } = useToast();
+
+  // Check for payment status changes from Razorpay redirect
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const paymentStatus = queryParams.get("payment_status");
+    
+    if (paymentStatus === "success") {
+      setPaymentComplete(true);
+      toast({
+        title: "Payment Successful",
+        description: "Your payment was processed successfully.",
+      });
+      
+      // Clear URL params without refreshing
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
 
   // Handle enter passkey form submission
   const handleEnterPasskey = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!passkey) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid passkey.",
-        variant: "destructive",
-      });
+      setPasskeyError("Please enter a valid passkey.");
       return;
     }
     
     setIsLoading(true);
+    setPasskeyError("");
     
     try {
-      // TODO: Validate passkey with Firebase/Supabase
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // For now, we'll simulate validation
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!user) {
+        throw new Error("You must be logged in to validate a passkey.");
+      }
       
-      // Simulate screen sharing request for real implementation
+      // Check if the passkey exists and belongs to the user
+      const { data: passkeyData, error } = await supabase
+        .from("passkeys")
+        .select("*")
+        .eq("passkey", passkey)
+        .eq("user_id", user.id)
+        .eq("is_used", false)
+        .single();
+      
+      if (error || !passkeyData) {
+        setPasskeyError("Invalid or already used passkey.");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Mark the passkey as used
+      await supabase
+        .from("passkeys")
+        .update({ is_used: true })
+        .eq("id", passkeyData.id);
+      
+      // Create a new session
+      await supabase.from("sessions").insert({
+        passkey_id: passkeyData.id,
+        user_id: user.id,
+        start_time: new Date().toISOString(),
+      });
+      
+      setIsLoading(false);
+      
       toast({
         title: "Passkey Valid",
         description: "You would now be prompted for screen sharing access.",
       });
       
-      setIsLoading(false);
-      
       // In a real implementation, this would prompt for screen sharing
       // and start the interview assistant process
+      
     } catch (error) {
       console.error("Passkey validation error:", error);
       setIsLoading(false);
-      toast({
-        title: "Error",
-        description: "Failed to validate passkey. Please try again.",
-        variant: "destructive",
-      });
+      setPasskeyError("Failed to validate passkey. Please try again.");
     }
   };
 
   // Handle file upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setResumeFile(file);
+      
+      // If user is logged in, upload the file to Supabase storage
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const { data, error } = await supabase.storage
+            .from('resumes')
+            .upload(fileName, file);
+            
+          if (error) throw error;
+          
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('resumes')
+            .getPublicUrl(fileName);
+            
+          setResumeUrl(urlData.publicUrl);
+        } catch (error) {
+          console.error("File upload error:", error);
+          toast({
+            title: "Error",
+            description: "Failed to upload resume. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
     }
   };
 
@@ -104,18 +186,37 @@ const CopilotSection = () => {
       return;
     }
     
+    if (!paymentComplete && !window.location.search.includes("payment_status=success")) {
+      // If payment is not complete, redirect to Razorpay
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // TODO: Process file upload and store in Firebase/Supabase
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // For now, we'll simulate the process
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (!user) {
+        throw new Error("You must be logged in to generate a passkey.");
+      }
       
       // Generate a random 6-digit passkey
       const newPasskey = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedPasskey(newPasskey);
       
+      // Save the passkey to Supabase
+      await supabase.from("passkeys").insert({
+        passkey: newPasskey,
+        user_id: user.id,
+        job_role: jobRole,
+        company: company,
+        job_description: jobDescription || null,
+        resume_url: resumeUrl,
+        expires_at: new Date(date!.setHours(parseInt(time.split(':')[0]), parseInt(time.split(':')[1]))).toISOString(),
+        is_used: false,
+      });
+      
+      setGeneratedPasskey(newPasskey);
       setIsLoading(false);
       
       toast({
@@ -180,13 +281,22 @@ const CopilotSection = () => {
                     id="passkey"
                     placeholder="Enter 6-digit passkey"
                     value={passkey}
-                    onChange={(e) => setPasskey(e.target.value)}
+                    onChange={(e) => {
+                      setPasskey(e.target.value);
+                      setPasskeyError("");
+                    }}
                     required
                     minLength={6}
                     maxLength={6}
                     pattern="[0-9]{6}"
                     className="text-center text-lg tracking-widest"
                   />
+                  {passkeyError && (
+                    <div className="text-destructive flex items-center text-sm mt-1">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {passkeyError}
+                    </div>
+                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
@@ -302,19 +412,32 @@ const CopilotSection = () => {
                 <div className="rounded-md bg-primary/10 p-4">
                   <h3 className="mb-2 text-sm font-medium">Payment Required</h3>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    A payment of ₹999 is required to generate a passkey. This is a one-time fee for each interview session.
+                    A payment of ₹50 is required to generate a passkey. This is a one-time fee for each interview session.
                   </p>
-                  <Button
-                    className="mt-2 w-full"
-                    onClick={handleGeneratePasskey}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                    ) : (
-                      "Generate Passkey"
-                    )}
-                  </Button>
+                  
+                  {!paymentComplete ? (
+                    <div className="mt-2">
+                      <form>
+                        <script 
+                          src="https://checkout.razorpay.com/v1/payment-button.js" 
+                          data-payment_button_id="pl_QOEa41foHVbd1v" 
+                          async
+                        ></script>
+                      </form>
+                    </div>
+                  ) : (
+                    <Button
+                      className="mt-2 w-full"
+                      onClick={handleGeneratePasskey}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                      ) : (
+                        "Generate Passkey"
+                      )}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="text-xs text-muted-foreground">
@@ -384,6 +507,7 @@ const CopilotSection = () => {
                     setJobDescription("");
                     setDate(undefined);
                     setTime("");
+                    setPaymentComplete(false);
                   }}
                 >
                   Generate Another
