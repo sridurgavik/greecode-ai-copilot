@@ -16,12 +16,13 @@ const useChromeAPI = () => {
     }
     
     try {
-      const tabs = await new Promise<chrome.tabs.Tab[]>((resolve) => {
+      const tabsPromise = new Promise<chrome.tabs.Tab[]>((resolve) => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           resolve(tabs);
         });
       });
       
+      const tabs = await tabsPromise;
       const activeTab = tabs[0];
       
       if (!activeTab?.id) {

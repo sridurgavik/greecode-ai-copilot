@@ -1,3 +1,4 @@
+
 // Content script for the Greecode extension
 // This runs on web pages and handles interaction with the page content
 
@@ -28,7 +29,7 @@ if (isExtensionEnvironment) {
         
       case "SUMMARIZE_PAGE":
         const pageContent = extractPageContent();
-        if (chrome.runtime) {
+        if (chrome.runtime && isExtensionEnvironment) {
           chrome.runtime.sendMessage({
             type: "AI_REQUEST",
             action: "summarize",
@@ -131,12 +132,14 @@ const handleMouseClick = (event: MouseEvent) => {
   const selectedText = selectedElement.innerText;
   
   // Send the extracted text to the background script
-  chrome.runtime.sendMessage({
-    type: "TEXT_EXTRACTION",
-    text: selectedText
-  }, response => {
-    console.log("Text extraction response:", response);
-  });
+  if (isExtensionEnvironment && chrome.runtime) {
+    chrome.runtime.sendMessage({
+      type: "TEXT_EXTRACTION",
+      text: selectedText
+    }, response => {
+      console.log("Text extraction response:", response);
+    });
+  }
   
   // Exit selection mode
   cancelSelectionMode();

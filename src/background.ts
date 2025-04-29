@@ -1,3 +1,4 @@
+
 // Background script for the Greecode extension
 // Handles authentication, API calls, and communication with content scripts
 
@@ -93,8 +94,11 @@ const initExtension = async () => {
   
   // Check if user is authenticated if in extension environment
   if (isExtensionEnvironment && chrome.storage) {
-    const session = await chrome.storage.local.get("session");
-    console.log("Session:", session);
+    chrome.storage.local.get("session").then((session) => {
+      console.log("Session:", session);
+    }).catch(error => {
+      console.error("Chrome storage error:", error);
+    });
   }
 };
 

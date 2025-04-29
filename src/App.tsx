@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -29,14 +30,17 @@ const App = () => {
         
         // If no Supabase session, check extension storage as fallback
         if (typeof chrome !== 'undefined' && chrome.storage) {
-          const result = await chrome.storage.local.get("session");
-          if (result.session) {
-            setIsAuthenticated(true);
-            toast({
-              title: "Welcome back!",
-              description: "You are now logged in.",
-            });
-          }
+          chrome.storage.local.get("session").then((result) => {
+            if (result.session) {
+              setIsAuthenticated(true);
+              toast({
+                title: "Welcome back!",
+                description: "You are now logged in.",
+              });
+            }
+          }).catch(error => {
+            console.error("Chrome storage error:", error);
+          });
         }
       } catch (error) {
         console.error("Auth check error:", error);

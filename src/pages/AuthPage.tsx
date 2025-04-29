@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,49 @@ const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
   const [password, setPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Check if the app is already in an authentication callback state
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes("access_token")) {
+        setIsLoading(true);
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (data?.session && !error) {
+          // Store session info in chrome storage if extension environment
+          if (typeof chrome !== 'undefined' && chrome.storage) {
+            try {
+              await chrome.storage.local.set({
+                session: {
+                  user: data.session.user,
+                  timestamp: Date.now(),
+                },
+              });
+            } catch (storageError) {
+              console.error("Failed to store session in chrome storage:", storageError);
+            }
+          }
+          
+          toast({
+            title: "Login successful",
+            description: "Welcome back!",
+          });
+          
+          onLoginSuccess();
+        } else if (error) {
+          toast({
+            title: "Authentication Error",
+            description: error.message || "Failed to authenticate from provider.",
+            variant: "destructive",
+          });
+        }
+        setIsLoading(false);
+      }
+    };
+    
+    handleAuthCallback();
+  }, [onLoginSuccess, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +79,11 @@ const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
         result = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              full_name: email.split('@')[0], // Use part of email as name placeholder
+            }
+          }
         });
       }
       
@@ -44,12 +93,16 @@ const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
       
       // Store session info in chrome storage if extension environment
       if (typeof chrome !== 'undefined' && chrome.storage) {
-        await chrome.storage.local.set({
-          session: {
-            user: result.data.user,
-            timestamp: Date.now(),
-          },
-        });
+        try {
+          await chrome.storage.local.set({
+            session: {
+              user: result.data.user,
+              timestamp: Date.now(),
+            },
+          });
+        } catch (storageError) {
+          console.error("Failed to store session in chrome storage:", storageError);
+        }
       }
       
       toast({

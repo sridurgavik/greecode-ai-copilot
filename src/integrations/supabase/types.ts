@@ -9,7 +9,110 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      passkeys: {
+        Row: {
+          company: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          is_used: boolean | null
+          job_description: string | null
+          job_role: string | null
+          passkey: string
+          resume_url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          is_used?: boolean | null
+          job_description?: string | null
+          job_role?: string | null
+          passkey: string
+          resume_url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_used?: boolean | null
+          job_description?: string | null
+          job_role?: string | null
+          passkey?: string
+          resume_url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sessions: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          id: string
+          passkey_id: string | null
+          start_time: string | null
+          transcript: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          passkey_id?: string | null
+          start_time?: string | null
+          transcript?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          passkey_id?: string | null
+          start_time?: string | null
+          transcript?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_passkey_id_fkey"
+            columns: ["passkey_id"]
+            isOneToOne: false
+            referencedRelation: "passkeys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
