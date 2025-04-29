@@ -1,32 +1,36 @@
-
 // Background script for the Greecode extension
 // Handles authentication, API calls, and communication with content scripts
 
+// Check if we're in the extension environment
+const isExtensionEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage;
+
 // Listen for messages from content script or popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log("Background script received message:", request);
-  
-  // Handle different message types
-  switch (request.type) {
-    case "AUTH_REQUEST":
-      handleAuthRequest(request, sendResponse);
-      break;
-    case "TEXT_EXTRACTION":
-      handleTextExtraction(request, sendResponse);
-      break;
-    case "AI_REQUEST":
-      handleAIRequest(request, sendResponse);
-      break;
-    case "PASSKEY_VALIDATION":
-      handlePasskeyValidation(request, sendResponse);
-      break;
-    default:
-      console.log("Unknown message type:", request.type);
-  }
-  
-  // Return true to indicate that the response will be sent asynchronously
-  return true;
-});
+if (isExtensionEnvironment) {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log("Background script received message:", request);
+    
+    // Handle different message types
+    switch (request.type) {
+      case "AUTH_REQUEST":
+        handleAuthRequest(request, sendResponse);
+        break;
+      case "TEXT_EXTRACTION":
+        handleTextExtraction(request, sendResponse);
+        break;
+      case "AI_REQUEST":
+        handleAIRequest(request, sendResponse);
+        break;
+      case "PASSKEY_VALIDATION":
+        handlePasskeyValidation(request, sendResponse);
+        break;
+      default:
+        console.log("Unknown message type:", request.type);
+    }
+    
+    // Return true to indicate that the response will be sent asynchronously
+    return true;
+  });
+}
 
 // Handle authentication requests
 const handleAuthRequest = async (request: any, sendResponse: any) => {
@@ -86,9 +90,12 @@ const handlePasskeyValidation = async (request: any, sendResponse: any) => {
 // Initialize the extension
 const initExtension = async () => {
   console.log("Greecode extension initialized");
-  // Check if user is authenticated
-  const session = await chrome.storage.local.get("session");
-  console.log("Session:", session);
+  
+  // Check if user is authenticated if in extension environment
+  if (isExtensionEnvironment && chrome.storage) {
+    const session = await chrome.storage.local.get("session");
+    console.log("Session:", session);
+  }
 };
 
 // Run initialization

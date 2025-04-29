@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -6,46 +5,80 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, FileText, Copy, BookOpen, Search } from "lucide-react";
 
+// Helper function to safely interact with Chrome API
+const useChromeAPI = () => {
+  const isExtensionEnvironment = typeof chrome !== 'undefined' && chrome.tabs && chrome.runtime;
+  
+  const sendTabMessage = async (message: any): Promise<any> => {
+    if (!isExtensionEnvironment) {
+      console.warn("Not in extension environment, cannot send tab message");
+      return { success: false, error: "Not in extension environment" };
+    }
+    
+    try {
+      const tabs = await new Promise<chrome.tabs.Tab[]>((resolve) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          resolve(tabs);
+        });
+      });
+      
+      const activeTab = tabs[0];
+      
+      if (!activeTab?.id) {
+        return { success: false, error: "No active tab found" };
+      }
+      
+      return new Promise((resolve) => {
+        chrome.tabs.sendMessage(activeTab.id, message, (response) => {
+          if (chrome.runtime.lastError) {
+            resolve({ success: false, error: chrome.runtime.lastError.message });
+            return;
+          }
+          resolve(response || { success: false, error: "No response from content script" });
+        });
+      });
+    } catch (error) {
+      console.error("Error sending tab message:", error);
+      return { success: false, error: String(error) };
+    }
+  };
+  
+  return { isExtensionEnvironment, sendTabMessage };
+};
+
 const ProSection = () => {
   const [selectedText, setSelectedText] = useState<string>("");
   const [aiResponse, setAiResponse] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
+  const { isExtensionEnvironment, sendTabMessage } = useChromeAPI();
   
   // Handle extract selected text button
   const handleExtractSelected = async () => {
     try {
-      // Get the active tab
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const activeTab = tabs[0];
+      if (!isExtensionEnvironment) {
+        toast({
+          title: "Not in Extension Environment",
+          description: "This feature is only available in the Chrome extension.",
+          variant: "destructive",
+        });
+        return;
+      }
       
-      // Send message to content script to start selection mode
-      if (activeTab?.id) {
-        chrome.tabs.sendMessage(
-          activeTab.id,
-          { action: "START_SELECTION" },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error(chrome.runtime.lastError);
-              toast({
-                title: "Error",
-                description: "Failed to start selection mode. Please try again.",
-                variant: "destructive",
-              });
-              return;
-            }
-            
-            if (response?.success) {
-              toast({
-                title: "Selection Mode",
-                description: "Click on an element to extract its text.",
-              });
-              
-              // Close the popup to let the user interact with the page
-              window.close();
-            }
-          }
-        );
+      const response = await sendTabMessage({ action: "START_SELECTION" });
+      
+      if (response?.success) {
+        toast({
+          title: "Selection Mode",
+          description: "Click on an element to extract its text.",
+        });
+        
+        // Close the popup to let the user interact with the page
+        if (window.close) {
+          window.close();
+        }
+      } else {
+        throw new Error(response?.error || "Failed to start selection mode");
       }
     } catch (error) {
       console.error("Extract selected error:", error);
@@ -62,37 +95,24 @@ const ProSection = () => {
     try {
       setIsLoading(true);
       
-      // Get the active tab
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const activeTab = tabs[0];
+      if (!isExtensionEnvironment) {
+        setSelectedText("This feature is only available in the Chrome extension.");
+        setIsLoading(false);
+        return;
+      }
       
-      // Send message to content script to extract page content
-      if (activeTab?.id) {
-        chrome.tabs.sendMessage(
-          activeTab.id,
-          { action: "EXTRACT_PAGE_CONTENT" },
-          (response) => {
-            setIsLoading(false);
-            
-            if (chrome.runtime.lastError) {
-              console.error(chrome.runtime.lastError);
-              toast({
-                title: "Error",
-                description: "Failed to read page. Please try again.",
-                variant: "destructive",
-              });
-              return;
-            }
-            
-            if (response?.success) {
-              setSelectedText(response.content);
-              toast({
-                title: "Page Read",
-                description: "Page content extracted successfully.",
-              });
-            }
-          }
-        );
+      const response = await sendTabMessage({ action: "EXTRACT_PAGE_CONTENT" });
+      
+      setIsLoading(false);
+      
+      if (response?.success) {
+        setSelectedText(response.content);
+        toast({
+          title: "Page Read",
+          description: "Page content extracted successfully.",
+        });
+      } else {
+        throw new Error(response?.error || "Failed to read page");
       }
     } catch (error) {
       console.error("Read page error:", error);

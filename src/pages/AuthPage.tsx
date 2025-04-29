@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthPageProps {
   onLoginSuccess: () => void;
@@ -22,17 +22,39 @@ const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
     setIsLoading(true);
     
     try {
-      // TODO: Connect to Firebase/Supabase for actual authentication
+      let result;
       
-      // For now, we'll simulate a successful login
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (isLogin) {
+        // Sign in existing user
+        result = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+      } else {
+        // Sign up new user
+        result = await supabase.auth.signUp({
+          email,
+          password,
+        });
+      }
       
-      // Store session in chrome storage
-      await chrome.storage.local.set({
-        session: {
-          user: { email },
-          timestamp: Date.now(),
-        },
+      if (result.error) {
+        throw result.error;
+      }
+      
+      // Store session info in chrome storage if extension environment
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        await chrome.storage.local.set({
+          session: {
+            user: result.data.user,
+            timestamp: Date.now(),
+          },
+        });
+      }
+      
+      toast({
+        title: isLogin ? "Login successful" : "Account created",
+        description: isLogin ? "Welcome back!" : "Please check your email to verify your account.",
       });
       
       onLoginSuccess();
@@ -40,7 +62,7 @@ const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
       console.error("Auth error:", error);
       toast({
         title: "Authentication Error",
-        description: "Failed to authenticate. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to authenticate. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -52,16 +74,27 @@ const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
     setIsLoading(true);
     
     try {
-      // TODO: Implement Google authentication with Firebase/Supabase
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // We won't get here immediately as we'll be redirected to Google
       toast({
-        title: "Not Implemented",
-        description: "Google login is not yet implemented.",
+        title: "Google Authentication",
+        description: "Redirecting to Google for authentication...",
       });
     } catch (error) {
       console.error("Google auth error:", error);
       toast({
         title: "Authentication Error",
-        description: "Failed to authenticate with Google. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to authenticate with Google. Please try again.",
         variant: "destructive",
       });
     } finally {

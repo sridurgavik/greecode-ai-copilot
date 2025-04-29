@@ -1,48 +1,54 @@
-
 // Content script for the Greecode extension
 // This runs on web pages and handles interaction with the page content
 
 console.log("Greecode content script loaded");
+
+// Check if we're in the extension environment
+const isExtensionEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage;
 
 // Text selection and extraction functionality
 let selectedElement: HTMLElement | null = null;
 let isSelectionMode = false;
 
 // Listen for messages from the extension popup/background
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log("Content script received message:", request);
-  
-  switch (request.action) {
-    case "START_SELECTION":
-      startSelectionMode();
-      sendResponse({ success: true });
-      break;
-      
-    case "EXTRACT_PAGE_CONTENT":
-      const content = extractPageContent();
-      sendResponse({ success: true, content });
-      break;
-      
-    case "SUMMARIZE_PAGE":
-      const pageContent = extractPageContent();
-      chrome.runtime.sendMessage({
-        type: "AI_REQUEST",
-        action: "summarize",
-        content: pageContent
-      }, response => {
-        console.log("Summarize response:", response);
-      });
-      sendResponse({ success: true, message: "Summarization request sent" });
-      break;
-      
-    case "CANCEL_SELECTION":
-      cancelSelectionMode();
-      sendResponse({ success: true });
-      break;
-  }
-  
-  return true;
-});
+if (isExtensionEnvironment) {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log("Content script received message:", request);
+    
+    switch (request.action) {
+      case "START_SELECTION":
+        startSelectionMode();
+        sendResponse({ success: true });
+        break;
+        
+      case "EXTRACT_PAGE_CONTENT":
+        const content = extractPageContent();
+        sendResponse({ success: true, content });
+        break;
+        
+      case "SUMMARIZE_PAGE":
+        const pageContent = extractPageContent();
+        if (chrome.runtime) {
+          chrome.runtime.sendMessage({
+            type: "AI_REQUEST",
+            action: "summarize",
+            content: pageContent
+          }, response => {
+            console.log("Summarize response:", response);
+          });
+        }
+        sendResponse({ success: true, message: "Summarization request sent" });
+        break;
+        
+      case "CANCEL_SELECTION":
+        cancelSelectionMode();
+        sendResponse({ success: true });
+        break;
+    }
+    
+    return true;
+  });
+}
 
 // Extract all text content from the page
 const extractPageContent = (): string => {

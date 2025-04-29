@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthPage from "@/pages/AuthPage";
 import MainApp from "@/pages/MainApp";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -15,14 +15,28 @@ const App = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check if session exists in chrome storage
-        const result = await chrome.storage.local.get("session");
-        if (result.session) {
+        // First check Supabase auth
+        const { data } = await supabase.auth.getSession();
+        
+        if (data?.session) {
           setIsAuthenticated(true);
           toast({
             title: "Welcome back!",
             description: "You are now logged in.",
           });
+          return;
+        }
+        
+        // If no Supabase session, check extension storage as fallback
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          const result = await chrome.storage.local.get("session");
+          if (result.session) {
+            setIsAuthenticated(true);
+            toast({
+              title: "Welcome back!",
+              description: "You are now logged in.",
+            });
+          }
         }
       } catch (error) {
         console.error("Auth check error:", error);
@@ -46,7 +60,14 @@ const App = () => {
   // Handle logout
   const handleLogout = async () => {
     try {
-      await chrome.storage.local.remove("session");
+      // Sign out of Supabase
+      await supabase.auth.signOut();
+      
+      // Clear extension storage if in extension environment
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        await chrome.storage.local.remove("session");
+      }
+      
       setIsAuthenticated(false);
       toast({
         title: "Logged out",
