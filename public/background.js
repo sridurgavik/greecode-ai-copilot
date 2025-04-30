@@ -60,51 +60,60 @@ const handleAIRequest = async (request, sendResponse) => {
   try {
     console.log("Processing AI request:", request);
     
-    // Implement more sophisticated response logic for a more realistic chat experience
+    // Get the user message
     const userMessage = request.message || "";
     
-    // Simulate typing delay for more realistic experience
-    const typingDelay = Math.min(1000 + userMessage.length * 10, 3000);
+    // Create a more intelligent response based on the message content
+    const response = generateIntelligentResponse(userMessage);
     
-    // Create a more personalized response based on the message content
-    let response = "";
-    
-    if (userMessage.toLowerCase().includes("hello") || userMessage.toLowerCase().includes("hi")) {
-      response = "Hello! I'm GreecodePro.ai assistant. How can I help you prepare for your technical interview today?";
-    }
-    else if (userMessage.toLowerCase().includes("interview")) {
-      response = "Technical interviews can be challenging. I recommend preparing by practicing algorithm questions, system design, and behavioral questions. Would you like me to help you with any specific area?";
-    }
-    else if (userMessage.toLowerCase().includes("javascript") || userMessage.toLowerCase().includes("js")) {
-      response = "JavaScript is essential for frontend roles. Make sure you understand closures, promises, the event loop, and common patterns. Would you like me to explain any particular JavaScript concept or provide a practice problem?";
-    }
-    else if (userMessage.toLowerCase().includes("react")) {
-      response = "For React interviews, focus on understanding hooks, component lifecycle, state management with tools like Redux or Context API, and performance optimization. I can help you practice React-specific questions if you'd like.";
-    }
-    else if (userMessage.toLowerCase().includes("algorithm") || userMessage.toLowerCase().includes("complexity")) {
-      response = "Algorithmic problems typically focus on data structures like arrays, linked lists, trees, and graphs. Time complexity analysis is crucial. Would you like me to suggest some practice problems or explain a specific algorithm?";
-    }
-    else if (userMessage.toLowerCase().includes("system design") || userMessage.toLowerCase().includes("architecture")) {
-      response = "System design interviews test your ability to design scalable systems. Focus on understanding distributed systems, databases, caching, load balancing, and microservices architecture. Would you like to discuss a specific system design topic?";
-    }
-    else if (userMessage.toLowerCase().includes("thank")) {
-      response = "You're welcome! Feel free to ask me any questions as you prepare for your interview. I'm here to help you succeed!";
-    }
-    else {
-      response = `I understand you're asking about "${userMessage}". As your interview preparation assistant, I can help with coding problems, system design, behavioral questions, or specific technologies. What specific aspect would you like to focus on?`;
-    }
-    
-    // Simulate network delay for a more realistic experience
+    // Simulate realistic network delay
     setTimeout(() => {
       sendResponse({ 
         success: true, 
         message: response 
       });
-    }, typingDelay);
+    }, 300);
     
   } catch (error) {
     console.error("AI request error:", error);
     sendResponse({ success: false, error: "AI request failed" });
+  }
+};
+
+// Generate more intelligent, context-aware responses
+const generateIntelligentResponse = (userMessage) => {
+  const userMessageLower = userMessage.toLowerCase();
+  
+  // Tech interview-specific responses
+  if (userMessageLower.includes("hello") || userMessageLower.includes("hi")) {
+    return "Hello! I'm your GreecodePro.ai interview coach. I can help you prepare for technical interviews through practice problems, concept explanations, or mock interviews. What would you like to focus on today?";
+  }
+  else if (userMessageLower.includes("interview")) {
+    return "Technical interviews typically cover algorithms, data structures, system design, and language-specific questions. I can help you with any of these areas. Would you like to practice a specific type of interview question?";
+  }
+  else if (userMessageLower.includes("javascript") || userMessageLower.includes("js")) {
+    return "For JavaScript interviews, you should be comfortable with concepts like closures, promises, async/await, prototypal inheritance, and the event loop. Here's a common JavaScript interview question: Explain how closures work and provide an example of their practical use. Would you like me to explain this concept or try a different JavaScript question?";
+  }
+  else if (userMessageLower.includes("react")) {
+    return "React interviews often focus on component lifecycle, hooks, state management, and performance optimization. A common question is explaining the difference between useState and useReducer hooks and when to use each. Would you like to explore this concept or try another React question?";
+  }
+  else if (userMessageLower.includes("algorithm") || userMessageLower.includes("complexity")) {
+    return "Algorithm questions often test your ability to solve problems efficiently. Let's practice with this question: 'Given an array of integers, find the pair with the smallest absolute difference. Return the pair as an array.' How would you approach this problem? Think about time complexity in your solution.";
+  }
+  else if (userMessageLower.includes("system design") || userMessageLower.includes("architecture")) {
+    return "System design interviews test your ability to design scalable systems. Let's practice with this question: 'Design a URL shortening service like bit.ly.' Consider aspects like API design, database schema, scaling strategies, and potential bottlenecks in your approach.";
+  }
+  else if (userMessageLower.includes("thank")) {
+    return "You're welcome! Remember to practice regularly and focus on understanding concepts rather than memorizing solutions. Is there anything else I can help you with for your interview preparation?";
+  }
+  else if (userMessageLower.includes("data structure")) {
+    return "Data structure questions are common in technical interviews. They test your understanding of arrays, linked lists, trees, graphs, stacks, queues, and hash tables. Would you like to practice a specific data structure problem or review the characteristics and use cases of different data structures?";
+  }
+  else if (userMessageLower.includes("behavioral")) {
+    return "Behavioral questions assess how you've handled situations in the past. A common format is the STAR method: Situation, Task, Action, Result. For example, if asked about a challenging project, describe the situation, your task, the actions you took, and the results you achieved. Would you like to practice a specific behavioral question?";
+  }
+  else {
+    return `I understand you're asking about "${userMessage}". As your interview preparation coach, I can help with coding problems, system design, behavioral questions, or specific technologies. Would you like me to provide some practice questions related to this topic or explain a specific concept in more detail?`;
   }
 };
 

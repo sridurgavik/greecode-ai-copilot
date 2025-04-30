@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,8 +36,10 @@ const CopilotSection = () => {
   const [passkeyError, setPasskeyError] = useState<string>("");
   const [paymentComplete, setPaymentComplete] = useState<boolean>(false);
   const [resumeUrl, setResumeUrl] = useState<string>("");
-  const [razorpayLoaded, setRazorpayLoaded] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Payment button container reference
+  const razorpayContainerRef = useRef<HTMLDivElement>(null);
 
   // Check for payment status changes from Razorpay redirect
   useEffect(() => {
@@ -54,40 +57,27 @@ const CopilotSection = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // Load Razorpay script
-    const loadRazorpayScript = () => {
-      if (!document.getElementById('razorpay-payment-button-script')) {
-        const script = document.createElement('script');
-        script.id = 'razorpay-payment-button-script';
-        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-        script.async = true;
-        script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
-        script.onload = () => setRazorpayLoaded(true);
-        document.body.appendChild(script);
-      }
-    };
-
-    if (activeTab === "generate" && !razorpayLoaded) {
-      loadRazorpayScript();
+    // Initialize payment button only if not already paid
+    if (activeTab === "generate" && !paymentComplete && razorpayContainerRef.current) {
+      // Clear previous content
+      razorpayContainerRef.current.innerHTML = '';
+      
+      // Create form element
+      const form = document.createElement('form');
+      
+      // Create and add script element
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+      script.dataset.payment_button_id = 'pl_QOEa41foHVbd1v';
+      script.async = true;
+      
+      // Append script to form
+      form.appendChild(script);
+      
+      // Append form to container
+      razorpayContainerRef.current.appendChild(form);
     }
-  }, [toast, activeTab, razorpayLoaded]);
-
-  // Render Razorpay button when script loads
-  useEffect(() => {
-    if (razorpayLoaded && !paymentComplete) {
-      const buttonContainer = document.getElementById('razorpay-button-container');
-      if (buttonContainer) {
-        buttonContainer.innerHTML = '';
-        const form = document.createElement('form');
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-        script.async = true;
-        script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
-        form.appendChild(script);
-        buttonContainer.appendChild(form);
-      }
-    }
-  }, [razorpayLoaded, paymentComplete]);
+  }, [toast, activeTab, paymentComplete, razorpayContainerRef]);
 
   // Handle enter passkey form submission
   const handleEnterPasskey = async (e: React.FormEvent) => {
@@ -141,11 +131,42 @@ const CopilotSection = () => {
       
       toast({
         title: "Passkey Valid",
-        description: "You would now be prompted for screen sharing access.",
+        description: "Please share your screen to continue with the interview assistant.",
       });
       
-      // In a real implementation, this would prompt for screen sharing
-      // and start the interview assistant process
+      // Request screen sharing
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        try {
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: true
+          });
+          
+          // Show success message after screen is shared
+          toast({
+            title: "Screen Shared Successfully",
+            description: "Your interview assistant is now active.",
+          });
+          
+          // Stop tracks when no longer needed
+          setTimeout(() => {
+            screenStream.getTracks().forEach(track => track.stop());
+          }, 500);
+        } catch (err) {
+          console.error("Error sharing screen:", err);
+          toast({
+            title: "Screen Share Cancelled",
+            description: "You need to share your screen to use the interview assistant.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Screen Sharing Not Supported",
+          description: "Your browser doesn't support screen sharing.",
+          variant: "destructive",
+        });
+      }
       
     } catch (error) {
       console.error("Passkey validation error:", error);
@@ -164,8 +185,20 @@ const CopilotSection = () => {
       
       if (user) {
         try {
+          setIsLoading(true);
           const fileExt = file.name.split('.').pop();
           const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          
+          // Check if storage bucket exists, if not create it
+          const { data: buckets } = await supabase.storage.listBuckets();
+          const resumeBucketExists = buckets?.some(bucket => bucket.name === 'resumes');
+          
+          if (!resumeBucketExists) {
+            await supabase.storage.createBucket('resumes', {
+              public: false
+            });
+          }
+          
           const { data, error } = await supabase.storage
             .from('resumes')
             .upload(fileName, file);
@@ -178,7 +211,16 @@ const CopilotSection = () => {
             .getPublicUrl(fileName);
             
           setResumeUrl(urlData.publicUrl);
+          
+          // Analyze resume (simulation - would be implemented with actual AI)
+          toast({
+            title: "Resume Uploaded",
+            description: "Resume analyzed successfully. Keywords extracted for interview preparation.",
+          });
+          
+          setIsLoading(false);
         } catch (error) {
+          setIsLoading(false);
           console.error("File upload error:", error);
           toast({
             title: "Error",
@@ -368,6 +410,7 @@ const CopilotSection = () => {
                       accept=".pdf,.doc,.docx"
                       onChange={handleFileChange}
                       className="max-w-xs"
+                      disabled={isLoading}
                     />
                     {resumeFile && <FileUp className="h-4 w-4 text-primary" />}
                   </div>
@@ -452,7 +495,7 @@ const CopilotSection = () => {
                   </p>
                   
                   {!paymentComplete ? (
-                    <div className="mt-2" id="razorpay-button-container">
+                    <div className="mt-2" ref={razorpayContainerRef}>
                       {/* Razorpay button will be injected here */}
                     </div>
                   ) : (

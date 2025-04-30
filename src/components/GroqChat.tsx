@@ -22,7 +22,6 @@ const GroqChat = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [currentResponse, setCurrentResponse] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -59,19 +58,13 @@ const GroqChat = () => {
               throw new Error(chrome.runtime.lastError.message);
             }
 
-            simulateRealTimeTyping(response);
+            const fullResponse = response?.success ? response.message : "Sorry, I couldn't process your request.";
+            simulateRealTimeTyping(fullResponse);
           }
         );
       } else {
-        // If not in extension environment, use a simulated response
-        // Simulate a real-time typing effect with pre-defined response
-        setTimeout(() => {
-          const simulatedResponse = {
-            success: true,
-            message: `I'm here to help with your technical interview preparation. Can you tell me what specific area you'd like to focus on? For example, I can help with algorithms, data structures, system design, or language-specific questions.`,
-          };
-          simulateRealTimeTyping(simulatedResponse);
-        }, 500);
+        // If not in extension environment, simulate a response with realistic typing
+        simulateAPIResponse(input);
       }
     } catch (error) {
       console.error("Send message error:", error);
@@ -85,22 +78,32 @@ const GroqChat = () => {
     }
   };
 
-  const simulateRealTimeTyping = (response: any) => {
-    if (!response?.success) {
-      setIsLoading(false);
-      setIsTyping(false);
-      toast({
-        title: "Error",
-        description: response?.error || "Failed to get response from AI.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const fullResponse = response.message;
-    let index = 0;
-    setCurrentResponse("");
+  // Simulate API response for testing/fallback
+  const simulateAPIResponse = (userInput: string) => {
+    // Generate more contextual responses based on user input
+    const userInputLower = userInput.toLowerCase();
+    let responseText = "";
     
+    if (userInputLower.includes("hello") || userInputLower.includes("hi")) {
+      responseText = "Hello there! I'm your interview preparation assistant. How can I help you today?";
+    } else if (userInputLower.includes("interview")) {
+      responseText = "Preparing for interviews is crucial. I can help with technical questions, behavioral questions, or mock interviews. What specific area would you like to focus on?";
+    } else if (userInputLower.includes("algorithm") || userInputLower.includes("data structure")) {
+      responseText = "Algorithms and data structures are common in technical interviews. I can help with specific problems or explain concepts like arrays, linked lists, trees, graphs, sorting algorithms, or dynamic programming. What would you like to practice?";
+    } else if (userInputLower.includes("javascript") || userInputLower.includes("react")) {
+      responseText = "For JavaScript interviews, you should understand closures, promises, the event loop, and frameworks like React. I can help with specific concepts or coding problems related to front-end development.";
+    } else if (userInputLower.includes("system design")) {
+      responseText = "System design interviews test your ability to architect scalable systems. Key concepts include load balancing, caching, database sharding, microservices, and API design. Would you like to practice a specific system design scenario?";
+    } else {
+      responseText = `I understand you're asking about "${userInput}". As an AI interview coach, I can help with technical concepts, coding problems, behavioral questions, or resume tips. Could you provide more details about what you'd like to learn?`;
+    }
+    
+    setTimeout(() => {
+      simulateRealTimeTyping(responseText);
+    }, 500);
+  };
+
+  const simulateRealTimeTyping = (fullResponse: string) => {
     // Create a temporary assistant message for the typing effect
     const assistantMessage = {
       role: "assistant" as const,
@@ -110,27 +113,31 @@ const GroqChat = () => {
     
     setMessages((prev) => [...prev, assistantMessage]);
     
+    let index = 0;
+    const characterDelay = 15; // Time between characters in ms
+    
     // Simulate typing character by character
     const typingInterval = setInterval(() => {
       if (index < fullResponse.length) {
-        setCurrentResponse(prev => prev + fullResponse[index]);
-        index++;
-        
-        // Update the last message in the array
+        // Update the last message in the array with one more character
         setMessages(prev => {
           const updated = [...prev];
+          const lastMessage = updated[updated.length - 1];
           updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            content: fullResponse.substring(0, index)
+            ...lastMessage,
+            content: fullResponse.substring(0, index + 1)
           };
           return updated;
         });
+        
+        index++;
       } else {
+        // Typing complete
         clearInterval(typingInterval);
         setIsLoading(false);
         setIsTyping(false);
       }
-    }, 15); // Adjust typing speed as needed
+    }, characterDelay);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -159,13 +166,13 @@ const GroqChat = () => {
 
   return (
     <Card className="flex flex-col h-[500px]">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center">
           <MessageCircle className="mr-2 h-5 w-5" />
           GreecodePro.ai Assistant
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col">
+      <CardContent className="flex-1 flex flex-col pt-0">
         <div className="flex-1 overflow-y-auto mb-4 space-y-4">
           {messages.map((message, index) => (
             <div
@@ -181,12 +188,12 @@ const GroqChat = () => {
                     : "bg-muted"
                 }`}
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-2">
                   <div className="break-words">{message.content}</div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 ml-2 opacity-50 hover:opacity-100"
+                    className="h-5 w-5 opacity-50 hover:opacity-100 shrink-0"
                     onClick={() => handleCopyMessage(message.content)}
                   >
                     <Copy className="h-3 w-3" />
@@ -199,7 +206,7 @@ const GroqChat = () => {
                       : "text-muted-foreground"
                   }`}
                 >
-                  {message.timestamp.toLocaleTimeString()}
+                  {message.timestamp.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                 </div>
               </div>
             </div>
