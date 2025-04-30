@@ -40,9 +40,7 @@ const CopilotSection = () => {
   const [resumeUrl, setResumeUrl] = useState<string>("");
   const [resumeAnalysis, setResumeAnalysis] = useState<string>("");
   const { toast } = useToast();
-
-  // Payment button container reference
-  const razorpayContainerRef = useRef<HTMLDivElement>(null);
+  const razorpayFormRef = useRef<HTMLFormElement>(null);
 
   // Check for payment status changes from URL parameters
   useEffect(() => {
@@ -77,27 +75,27 @@ const CopilotSection = () => {
     }
   }, [toast, activeTab]);
 
-  // Setup payment button when tab changes to generate
+  // Initialize payment button when tab changes to generate
   useEffect(() => {
-    // Only initialize payment button if on generate tab, not already paid, and container exists
-    if (activeTab === "generate" && !paymentComplete && !paymentProcessing && razorpayContainerRef.current) {
-      // Clear previous content
-      razorpayContainerRef.current.innerHTML = '';
+    // Only run this effect when on generate tab and not already paid
+    if (activeTab === "generate" && !paymentComplete && !paymentProcessing) {
+      // Make sure to clean up any existing script elements first
+      const existingScripts = document.querySelectorAll('script[src="https://checkout.razorpay.com/v1/payment-button.js"]');
+      existingScripts.forEach(script => script.remove());
       
-      // Create form element
-      const form = document.createElement('form');
-      
-      // Create and add script element
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-      script.dataset.payment_button_id = 'pl_QOEa41foHVbd1v';
-      script.async = true;
-      
-      // Append script to form
-      form.appendChild(script);
-      
-      // Append form to container
-      razorpayContainerRef.current.appendChild(form);
+      // Clear previous content in razorpay container if it exists
+      if (razorpayFormRef.current) {
+        razorpayFormRef.current.innerHTML = '';
+        
+        // Create script element
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+        script.async = true;
+        script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
+        
+        // Add script to razorpay form
+        razorpayFormRef.current.appendChild(script);
+      }
     }
   }, [activeTab, paymentComplete, paymentProcessing]);
 
@@ -235,12 +233,16 @@ const CopilotSection = () => {
             
           setResumeUrl(urlData.publicUrl);
           
-          // Simulate resume analysis (would be implemented with actual AI)
-          const mockAnalysis = "Resume analysis: Found experience in " + 
-                            (jobRole ? jobRole : "software development") + 
-                            ". Keywords extracted: JavaScript, React, TypeScript, " +
-                            "API Integration, UI/UX, Communication Skills";
-          setResumeAnalysis(mockAnalysis);
+          // Perform actual resume analysis based on file content
+          const fileContent = await readFileAsText(file);
+          const keywords = extractKeywords(fileContent);
+          
+          // Create comprehensive analysis
+          const analysisText = `Resume analysis: Found experience in ${
+            jobRole || extractJobRole(fileContent) || "software development"
+          }. Keywords extracted: ${keywords.join(", ")}.`;
+          
+          setResumeAnalysis(analysisText);
           
           toast({
             title: "Resume Uploaded",
@@ -259,6 +261,47 @@ const CopilotSection = () => {
         }
       }
     }
+  };
+
+  // Function to read file as text
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string || "");
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    });
+  };
+  
+  // Function to extract job role from resume
+  const extractJobRole = (content: string): string => {
+    const jobTitles = [
+      "Software Engineer", "Developer", "Frontend", "Backend", "Full Stack", 
+      "DevOps", "Data Scientist", "Project Manager", "Product Manager",
+      "UX Designer", "UI Designer", "QA Engineer", "Tester", "Architect"
+    ];
+    
+    for (const title of jobTitles) {
+      if (content.toLowerCase().includes(title.toLowerCase())) {
+        return title;
+      }
+    }
+    
+    return "";
+  };
+  
+  // Function to extract keywords from resume
+  const extractKeywords = (content: string): string[] => {
+    const techKeywords = [
+      "JavaScript", "React", "TypeScript", "Node.js", "HTML", "CSS", "Python",
+      "Java", "C#", "AWS", "Azure", "Docker", "Kubernetes", "SQL", "NoSQL",
+      "MongoDB", "Git", "CI/CD", "Agile", "Scrum", "REST API", "GraphQL",
+      "Testing", "TDD", "Performance", "Optimization", "UI/UX", "Communication Skills"
+    ];
+    
+    return techKeywords.filter(keyword => 
+      content.toLowerCase().includes(keyword.toLowerCase())
+    ).slice(0, 10); // Limit to 10 keywords
   };
 
   // Handle generate passkey
@@ -526,17 +569,17 @@ const CopilotSection = () => {
 
                 <div className="rounded-md bg-primary/10 p-4">
                   <h3 className="mb-2 text-sm font-medium">Payment Required</h3>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground mb-3">
                     A payment of ₹50 is required to generate a passkey. This is a one-time fee for each interview session.
                   </p>
                   
                   {!paymentComplete ? (
-                    <div className="mt-2" ref={razorpayContainerRef}>
-                      {/* Razorpay button will be injected here by the useEffect */}
-                    </div>
+                    <form ref={razorpayFormRef} className="mt-2">
+                      {/* Razorpay script will be injected here by useEffect */}
+                    </form>
                   ) : (
                     <Button
-                      className="mt-2 w-full"
+                      className="w-full"
                       onClick={handleGeneratePasskey}
                       disabled={isLoading}
                     >
