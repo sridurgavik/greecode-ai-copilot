@@ -76,7 +76,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
       </div>
 
       {/* Footer with fixed position */}
-      <footer className="border-t border-border py-4">
+      <footer className="border-t border-border py-4 mt-auto">
         <div className="container flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Greecode

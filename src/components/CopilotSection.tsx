@@ -39,8 +39,10 @@ const CopilotSection = () => {
   const [paymentError, setPaymentError] = useState<string>("");
   const [resumeUrl, setResumeUrl] = useState<string>("");
   const [resumeAnalysis, setResumeAnalysis] = useState<string>("");
+  const [uploadError, setUploadError] = useState<string>("");
   const { toast } = useToast();
-  const razorpayFormRef = useRef<HTMLFormElement>(null);
+  const razorpayFormRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check for payment status changes from URL parameters
   useEffect(() => {
@@ -78,26 +80,26 @@ const CopilotSection = () => {
   // Initialize payment button when tab changes to generate
   useEffect(() => {
     // Only run this effect when on generate tab and not already paid
-    if (activeTab === "generate" && !paymentComplete && !paymentProcessing) {
-      // Make sure to clean up any existing script elements first
-      const existingScripts = document.querySelectorAll('script[src="https://checkout.razorpay.com/v1/payment-button.js"]');
-      existingScripts.forEach(script => script.remove());
+    if (activeTab === "generate" && !paymentComplete && razorpayFormRef.current) {
+      // Clear previous content
+      razorpayFormRef.current.innerHTML = '';
       
-      // Clear previous content in razorpay container if it exists
-      if (razorpayFormRef.current) {
-        razorpayFormRef.current.innerHTML = '';
-        
-        // Create script element
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-        script.async = true;
-        script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
-        
-        // Add script to razorpay form
-        razorpayFormRef.current.appendChild(script);
-      }
+      // Create the form element
+      const form = document.createElement('form');
+      
+      // Create the script element
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+      script.async = true;
+      script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
+      
+      // Add script to form
+      form.appendChild(script);
+      
+      // Add form to container
+      razorpayFormRef.current.appendChild(form);
     }
-  }, [activeTab, paymentComplete, paymentProcessing]);
+  }, [activeTab, paymentComplete]);
 
   // Handle enter passkey form submission
   const handleEnterPasskey = async (e: React.FormEvent) => {
@@ -138,7 +140,7 @@ const CopilotSection = () => {
       await supabase
         .from("passkeys")
         .update({ is_used: true })
-        .eq("id", passkeyData.id);
+        .eq("passkey", passkey);
       
       // Create a new session
       await supabase.from("sessions").insert({
@@ -197,17 +199,32 @@ const CopilotSection = () => {
 
   // Handle file upload and analysis
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError("");
     const file = e.target.files?.[0];
     if (file) {
       setResumeFile(file);
       
-      // If user is logged in, upload the file to Supabase storage
-      const { data: { user } } = await supabase.auth.getUser();
+      // Check file type
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      if (fileExt !== 'pdf' && fileExt !== 'doc' && fileExt !== 'docx') {
+        setUploadError("Please upload a PDF or DOC file.");
+        return;
+      }
       
-      if (user) {
-        try {
-          setIsLoading(true);
-          const fileExt = file.name.split('.').pop();
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setUploadError("File size exceeds 5MB limit.");
+        return;
+      }
+      
+      // Upload the file
+      try {
+        setIsLoading(true);
+        
+        // Get the current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
           const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
           
           // Check if storage bucket exists, if not create it
@@ -224,7 +241,9 @@ const CopilotSection = () => {
             .from('resumes')
             .upload(fileName, file);
             
-          if (error) throw error;
+          if (error) {
+            throw error;
+          }
           
           // Get public URL
           const { data: urlData } = supabase.storage
@@ -233,13 +252,19 @@ const CopilotSection = () => {
             
           setResumeUrl(urlData.publicUrl);
           
-          // Perform actual resume analysis based on file content
+          // Perform resume analysis based on file content
           const fileContent = await readFileAsText(file);
           const keywords = extractKeywords(fileContent);
+          const detectedRole = extractJobRole(fileContent);
+          
+          // If no job role was set but we detected one, use it
+          if (!jobRole && detectedRole) {
+            setJobRole(detectedRole);
+          }
           
           // Create comprehensive analysis
           const analysisText = `Resume analysis: Found experience in ${
-            jobRole || extractJobRole(fileContent) || "software development"
+            jobRole || detectedRole || "software development"
           }. Keywords extracted: ${keywords.join(", ")}.`;
           
           setResumeAnalysis(analysisText);
@@ -248,17 +273,13 @@ const CopilotSection = () => {
             title: "Resume Uploaded",
             description: "Resume analyzed successfully. Keywords extracted for interview preparation.",
           });
-          
-          setIsLoading(false);
-        } catch (error) {
-          setIsLoading(false);
-          console.error("File upload error:", error);
-          toast({
-            title: "Error",
-            description: "Failed to upload resume. Please try again.",
-            variant: "destructive",
-          });
         }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("File upload error:", error);
+        setUploadError("Failed to upload resume. Please try again.");
+        setIsLoading(false);
       }
     }
   };
@@ -306,12 +327,10 @@ const CopilotSection = () => {
 
   // Handle generate passkey
   const handleGeneratePasskey = async () => {
+    setUploadError("");
+    
     if (!resumeFile) {
-      toast({
-        title: "Error",
-        description: "Please upload your resume.",
-        variant: "destructive",
-      });
+      setUploadError("Please upload your resume.");
       return;
     }
     
@@ -402,6 +421,13 @@ const CopilotSection = () => {
     }
   };
 
+  // Trigger file input click
+  const handleChooseFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Tabs
@@ -476,19 +502,36 @@ const CopilotSection = () => {
                 <div className="space-y-2">
                   <Label htmlFor="resume">Upload Resume</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      id="resume"
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleFileChange}
-                      className="max-w-xs"
-                      disabled={isLoading}
-                    />
-                    {resumeFile && <FileUp className="h-4 w-4 text-primary" />}
+                    <div className="relative flex items-center w-full max-w-xs">
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={handleChooseFile} 
+                        className="w-full justify-start text-left font-normal truncate"
+                      >
+                        {resumeFile ? resumeFile.name : "Choose File"}
+                      </Button>
+                      <Input
+                        ref={fileInputRef}
+                        id="resume"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        disabled={isLoading}
+                      />
+                      {resumeFile && <FileUp className="h-4 w-4 text-primary absolute right-3" />}
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Upload your resume in PDF or DOC format
                   </p>
+                  {uploadError && (
+                    <div className="text-destructive flex items-center text-sm mt-1">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {uploadError}
+                    </div>
+                  )}
                 </div>
 
                 {resumeAnalysis && (
@@ -574,9 +617,9 @@ const CopilotSection = () => {
                   </p>
                   
                   {!paymentComplete ? (
-                    <form ref={razorpayFormRef} className="mt-2">
-                      {/* Razorpay script will be injected here by useEffect */}
-                    </form>
+                    <div ref={razorpayFormRef} className="mt-2">
+                      {/* Razorpay payment button will be injected here */}
+                    </div>
                   ) : (
                     <Button
                       className="w-full"
