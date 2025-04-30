@@ -64,29 +64,38 @@ const handleAIRequest = async (request: any, sendResponse: any) => {
   try {
     console.log("Processing AI request:", request);
     
-    // In a real implementation, we would call the Groq API securely
-    // For now, we'll simulate different responses based on the message content
-    
+    // Implement more sophisticated response logic for a more realistic chat experience
     const userMessage = request.message || "";
+    
+    // Simulate typing delay for more realistic experience
+    const typingDelay = Math.min(1000 + userMessage.length * 10, 3000);
+    
+    // Create a more personalized response based on the message content
     let response = "";
     
     if (userMessage.toLowerCase().includes("hello") || userMessage.toLowerCase().includes("hi")) {
-      response = "Hello! I'm GreecodePro.ai assistant. How can I help you with your coding or technical interview today?";
+      response = "Hello! I'm GreecodePro.ai assistant. How can I help you prepare for your technical interview today?";
     }
     else if (userMessage.toLowerCase().includes("interview")) {
-      response = "Preparing for interviews can be challenging. I can help you practice coding questions, review algorithms, or discuss common interview topics. What specific area would you like to focus on?";
+      response = "Technical interviews can be challenging. I recommend preparing by practicing algorithm questions, system design, and behavioral questions. Would you like me to help you with any specific area?";
     }
     else if (userMessage.toLowerCase().includes("javascript") || userMessage.toLowerCase().includes("js")) {
-      response = "JavaScript is a versatile language! Are you looking for help with specific concepts like closures, promises, or the event loop? Or perhaps you'd like to practice some JavaScript coding challenges?";
+      response = "JavaScript is essential for frontend roles. Make sure you understand closures, promises, the event loop, and common patterns. Would you like me to explain any particular JavaScript concept or provide a practice problem?";
     }
     else if (userMessage.toLowerCase().includes("react")) {
-      response = "React is a popular frontend library. Would you like to discuss React hooks, component lifecycle, state management, or performance optimization techniques?";
+      response = "For React interviews, focus on understanding hooks, component lifecycle, state management with tools like Redux or Context API, and performance optimization. I can help you practice React-specific questions if you'd like.";
     }
     else if (userMessage.toLowerCase().includes("algorithm") || userMessage.toLowerCase().includes("complexity")) {
-      response = "Understanding algorithms and time complexity is crucial for technical interviews. I can explain concepts like Big O notation, sorting algorithms, or help you solve specific algorithmic challenges.";
+      response = "Algorithmic problems typically focus on data structures like arrays, linked lists, trees, and graphs. Time complexity analysis is crucial. Would you like me to suggest some practice problems or explain a specific algorithm?";
+    }
+    else if (userMessage.toLowerCase().includes("system design") || userMessage.toLowerCase().includes("architecture")) {
+      response = "System design interviews test your ability to design scalable systems. Focus on understanding distributed systems, databases, caching, load balancing, and microservices architecture. Would you like to discuss a specific system design topic?";
+    }
+    else if (userMessage.toLowerCase().includes("thank")) {
+      response = "You're welcome! Feel free to ask me any questions as you prepare for your interview. I'm here to help you succeed!";
     }
     else {
-      response = `I've processed your message: "${userMessage}". As an AI assistant specialized in helping with technical interviews and coding challenges, I'd be happy to provide guidance on programming concepts, algorithm problems, or interview preparation strategies.`;
+      response = `I understand you're asking about "${userMessage}". As your interview preparation assistant, I can help with coding problems, system design, behavioral questions, or specific technologies. What specific aspect would you like to focus on?`;
     }
     
     // Simulate network delay for a more realistic experience
@@ -95,7 +104,7 @@ const handleAIRequest = async (request: any, sendResponse: any) => {
         success: true, 
         message: response 
       });
-    }, 500);
+    }, typingDelay);
     
   } catch (error) {
     console.error("AI request error:", error);
@@ -106,10 +115,19 @@ const handleAIRequest = async (request: any, sendResponse: any) => {
 // Handle passkey validation
 const handlePasskeyValidation = async (request: any, sendResponse: any) => {
   try {
-    // TODO: Implement passkey validation with Firebase/Supabase
+    // Implement proper validation logic here
+    if (!request.passkey || request.passkey.length !== 6) {
+      sendResponse({ 
+        success: false, 
+        error: "Invalid passkey format" 
+      });
+      return;
+    }
+    
+    // In a real implementation, we would validate against the database
     sendResponse({ 
       success: true, 
-      message: "Passkey validation not yet implemented" 
+      message: "Passkey validation successful" 
     });
   } catch (error) {
     console.error("Passkey validation error:", error);

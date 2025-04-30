@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ const CopilotSection = () => {
   const [passkeyError, setPasskeyError] = useState<string>("");
   const [paymentComplete, setPaymentComplete] = useState<boolean>(false);
   const [resumeUrl, setResumeUrl] = useState<string>("");
+  const [razorpayLoaded, setRazorpayLoaded] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Check for payment status changes from Razorpay redirect
@@ -53,7 +53,41 @@ const CopilotSection = () => {
       // Clear URL params without refreshing
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [toast]);
+
+    // Load Razorpay script
+    const loadRazorpayScript = () => {
+      if (!document.getElementById('razorpay-payment-button-script')) {
+        const script = document.createElement('script');
+        script.id = 'razorpay-payment-button-script';
+        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+        script.async = true;
+        script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
+        script.onload = () => setRazorpayLoaded(true);
+        document.body.appendChild(script);
+      }
+    };
+
+    if (activeTab === "generate" && !razorpayLoaded) {
+      loadRazorpayScript();
+    }
+  }, [toast, activeTab, razorpayLoaded]);
+
+  // Render Razorpay button when script loads
+  useEffect(() => {
+    if (razorpayLoaded && !paymentComplete) {
+      const buttonContainer = document.getElementById('razorpay-button-container');
+      if (buttonContainer) {
+        buttonContainer.innerHTML = '';
+        const form = document.createElement('form');
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+        script.async = true;
+        script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
+        form.appendChild(script);
+        buttonContainer.appendChild(form);
+      }
+    }
+  }, [razorpayLoaded, paymentComplete]);
 
   // Handle enter passkey form submission
   const handleEnterPasskey = async (e: React.FormEvent) => {
@@ -120,7 +154,6 @@ const CopilotSection = () => {
     }
   };
 
-  // Handle file upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -186,8 +219,12 @@ const CopilotSection = () => {
       return;
     }
     
-    if (!paymentComplete && !window.location.search.includes("payment_status=success")) {
-      // If payment is not complete, redirect to Razorpay
+    if (!paymentComplete) {
+      toast({
+        title: "Payment Required",
+        description: "Please complete the payment to generate a passkey.",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -234,7 +271,6 @@ const CopilotSection = () => {
     }
   };
 
-  // Handle copy to clipboard
   const handleCopyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -416,14 +452,8 @@ const CopilotSection = () => {
                   </p>
                   
                   {!paymentComplete ? (
-                    <div className="mt-2">
-                      <form>
-                        <script 
-                          src="https://checkout.razorpay.com/v1/payment-button.js" 
-                          data-payment_button_id="pl_QOEa41foHVbd1v" 
-                          async
-                        ></script>
-                      </form>
+                    <div className="mt-2" id="razorpay-button-container">
+                      {/* Razorpay button will be injected here */}
                     </div>
                   ) : (
                     <Button
