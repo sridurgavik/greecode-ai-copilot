@@ -35,30 +35,52 @@ const CopilotSection = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [passkeyError, setPasskeyError] = useState<string>("");
   const [paymentComplete, setPaymentComplete] = useState<boolean>(false);
+  const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
+  const [paymentError, setPaymentError] = useState<string>("");
   const [resumeUrl, setResumeUrl] = useState<string>("");
+  const [resumeAnalysis, setResumeAnalysis] = useState<string>("");
   const { toast } = useToast();
 
   // Payment button container reference
   const razorpayContainerRef = useRef<HTMLDivElement>(null);
 
-  // Check for payment status changes from Razorpay redirect
+  // Check for payment status changes from URL parameters
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const paymentStatus = queryParams.get("payment_status");
+    const paymentId = queryParams.get("payment_id");
     
-    if (paymentStatus === "success") {
+    if (paymentStatus === "success" && paymentId) {
       setPaymentComplete(true);
       toast({
         title: "Payment Successful",
         description: "Your payment was processed successfully.",
       });
       
+      // Generate passkey automatically after successful payment
+      if (activeTab === "generate") {
+        handleGeneratePasskey();
+      }
+      
+      // Clear URL params without refreshing
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === "failure") {
+      setPaymentError("Payment failed. Please try again.");
+      toast({
+        title: "Payment Failed",
+        description: "Your payment could not be processed. Please try again.",
+        variant: "destructive",
+      });
+      
       // Clear URL params without refreshing
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }, [toast, activeTab]);
 
-    // Initialize payment button only if not already paid
-    if (activeTab === "generate" && !paymentComplete && razorpayContainerRef.current) {
+  // Setup payment button when tab changes to generate
+  useEffect(() => {
+    // Only initialize payment button if on generate tab, not already paid, and container exists
+    if (activeTab === "generate" && !paymentComplete && !paymentProcessing && razorpayContainerRef.current) {
       // Clear previous content
       razorpayContainerRef.current.innerHTML = '';
       
@@ -77,7 +99,7 @@ const CopilotSection = () => {
       // Append form to container
       razorpayContainerRef.current.appendChild(form);
     }
-  }, [toast, activeTab, paymentComplete, razorpayContainerRef]);
+  }, [activeTab, paymentComplete, paymentProcessing]);
 
   // Handle enter passkey form submission
   const handleEnterPasskey = async (e: React.FormEvent) => {
@@ -175,6 +197,7 @@ const CopilotSection = () => {
     }
   };
 
+  // Handle file upload and analysis
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -212,7 +235,13 @@ const CopilotSection = () => {
             
           setResumeUrl(urlData.publicUrl);
           
-          // Analyze resume (simulation - would be implemented with actual AI)
+          // Simulate resume analysis (would be implemented with actual AI)
+          const mockAnalysis = "Resume analysis: Found experience in " + 
+                            (jobRole ? jobRole : "software development") + 
+                            ". Keywords extracted: JavaScript, React, TypeScript, " +
+                            "API Integration, UI/UX, Communication Skills";
+          setResumeAnalysis(mockAnalysis);
+          
           toast({
             title: "Resume Uploaded",
             description: "Resume analyzed successfully. Keywords extracted for interview preparation.",
@@ -419,6 +448,13 @@ const CopilotSection = () => {
                   </p>
                 </div>
 
+                {resumeAnalysis && (
+                  <div className="rounded-md bg-muted p-3 text-sm">
+                    <p className="font-medium mb-1">Resume Analysis</p>
+                    <p className="text-muted-foreground">{resumeAnalysis}</p>
+                  </div>
+                )}
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="jobRole">Job Role</Label>
@@ -496,7 +532,7 @@ const CopilotSection = () => {
                   
                   {!paymentComplete ? (
                     <div className="mt-2" ref={razorpayContainerRef}>
-                      {/* Razorpay button will be injected here */}
+                      {/* Razorpay button will be injected here by the useEffect */}
                     </div>
                   ) : (
                     <Button
@@ -510,6 +546,13 @@ const CopilotSection = () => {
                         "Generate Passkey"
                       )}
                     </Button>
+                  )}
+
+                  {paymentError && (
+                    <div className="text-destructive flex items-center text-sm mt-2">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {paymentError}
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -581,6 +624,7 @@ const CopilotSection = () => {
                     setDate(undefined);
                     setTime("");
                     setPaymentComplete(false);
+                    setPaymentError("");
                   }}
                 >
                   Generate Another

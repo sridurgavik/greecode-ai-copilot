@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import ProSection from "@/components/ProSection";
 import CopilotSection from "@/components/CopilotSection";
 import SettingsPopover from "@/components/SettingsPopover";
+import SettingsIcon from "@/components/SettingsIcon";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -37,6 +38,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
             </div>
           </div>
           <div className="ml-auto flex items-center space-x-2">
+            <SettingsIcon />
             <SettingsPopover />
             <ThemeToggle />
             <Button

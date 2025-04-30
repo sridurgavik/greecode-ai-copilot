@@ -5,6 +5,10 @@
 // Check if we're in the extension environment
 const isExtensionEnvironment = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage;
 
+// Maintain conversation context
+let conversationHistory: Array<{role: string, content: string}> = [];
+const MAX_HISTORY_LENGTH = 10;
+
 // Listen for messages from content script or popup
 if (isExtensionEnvironment) {
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -66,16 +70,25 @@ const handleAIRequest = async (request: any, sendResponse: any) => {
     
     const userMessage = request.message || "";
     
-    // Create a more intelligent response based on the message content
-    const response = generateIntelligentResponse(userMessage);
+    // Add user message to history
+    conversationHistory.push({ role: 'user', content: userMessage });
     
-    // Simulate realistic network delay
-    setTimeout(() => {
-      sendResponse({ 
-        success: true, 
-        message: response 
-      });
-    }, 300);
+    // Trim history if it gets too long
+    if (conversationHistory.length > MAX_HISTORY_LENGTH * 2) {
+      conversationHistory = conversationHistory.slice(-MAX_HISTORY_LENGTH * 2);
+    }
+    
+    // Create a more intelligent response based on the message content
+    const response = generateIntelligentResponse(userMessage, conversationHistory);
+    
+    // Add AI response to history
+    conversationHistory.push({ role: 'assistant', content: response });
+    
+    // Return the response immediately for real-time experience
+    sendResponse({ 
+      success: true, 
+      message: response 
+    });
     
   } catch (error) {
     console.error("AI request error:", error);
@@ -84,8 +97,13 @@ const handleAIRequest = async (request: any, sendResponse: any) => {
 };
 
 // Generate more intelligent, context-aware responses
-const generateIntelligentResponse = (userMessage: string): string => {
+const generateIntelligentResponse = (userMessage: string, history: Array<{role: string, content: string}>): string => {
   const userMessageLower = userMessage.toLowerCase();
+  
+  // First response for new conversations
+  if (history.filter(msg => msg.role === 'assistant').length === 0) {
+    return "Hello! I'm your GreecodePro.ai interview coach. I can help you prepare for technical interviews through practice problems, concept explanations, or mock interviews. What would you like to focus on today?";
+  }
   
   // Tech interview-specific responses
   if (userMessageLower.includes("hello") || userMessageLower.includes("hi")) {
@@ -146,6 +164,9 @@ const handlePasskeyValidation = async (request: any, sendResponse: any) => {
 // Initialize the extension
 const initExtension = async () => {
   console.log("Greecode extension initialized");
+  
+  // Reset conversation history
+  conversationHistory = [];
   
   // Check if user is authenticated if in extension environment
   if (isExtensionEnvironment && chrome.storage) {

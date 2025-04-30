@@ -55,6 +55,10 @@ const handleTextExtraction = async (request, sendResponse) => {
   }
 };
 
+// Maintain conversation context
+let conversationHistory = [];
+const MAX_HISTORY_LENGTH = 10;
+
 // Handle AI requests (using Groq API)
 const handleAIRequest = async (request, sendResponse) => {
   try {
@@ -63,16 +67,25 @@ const handleAIRequest = async (request, sendResponse) => {
     // Get the user message
     const userMessage = request.message || "";
     
-    // Create a more intelligent response based on the message content
-    const response = generateIntelligentResponse(userMessage);
+    // Add user message to history
+    conversationHistory.push({ role: 'user', content: userMessage });
     
-    // Simulate realistic network delay
-    setTimeout(() => {
-      sendResponse({ 
-        success: true, 
-        message: response 
-      });
-    }, 300);
+    // Trim history if it gets too long
+    if (conversationHistory.length > MAX_HISTORY_LENGTH * 2) {
+      conversationHistory = conversationHistory.slice(-MAX_HISTORY_LENGTH * 2);
+    }
+    
+    // Create a more intelligent response based on the message content and history
+    const response = generateIntelligentResponse(userMessage, conversationHistory);
+    
+    // Add AI response to history
+    conversationHistory.push({ role: 'assistant', content: response });
+    
+    // Return the response immediately for real-time experience
+    sendResponse({ 
+      success: true, 
+      message: response 
+    });
     
   } catch (error) {
     console.error("AI request error:", error);
@@ -81,8 +94,13 @@ const handleAIRequest = async (request, sendResponse) => {
 };
 
 // Generate more intelligent, context-aware responses
-const generateIntelligentResponse = (userMessage) => {
+const generateIntelligentResponse = (userMessage, history) => {
   const userMessageLower = userMessage.toLowerCase();
+  
+  // First response for new conversations
+  if (history.filter(msg => msg.role === 'assistant').length === 0) {
+    return "Hello! I'm your GreecodePro.ai interview coach. I can help you prepare for technical interviews through practice problems, concept explanations, or mock interviews. What would you like to focus on today?";
+  }
   
   // Tech interview-specific responses
   if (userMessageLower.includes("hello") || userMessageLower.includes("hi")) {
@@ -130,6 +148,7 @@ const handlePasskeyValidation = async (request, sendResponse) => {
     }
     
     // In a real implementation, we would validate against the database
+    // For now, we'll assume it's valid for testing purposes
     sendResponse({ 
       success: true, 
       message: "Passkey validation successful" 
@@ -143,6 +162,8 @@ const handlePasskeyValidation = async (request, sendResponse) => {
 // Initialize the extension
 const initExtension = async () => {
   console.log("Greecode extension initialized");
+  // Reset conversation history on initialization
+  conversationHistory = [];
 };
 
 // Run initialization
