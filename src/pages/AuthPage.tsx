@@ -716,17 +716,17 @@ return (
               )}
               
               {isLogin && (
-                <Button
-                  variant="link"
-                  className="p-0 text-primary w-full text-right"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowForgotPassword(true);
-                  }}
-                  disabled={isLoading}
-                >
-                  Forgot Password?
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    variant="link"
+                    className="p-0 text-primary"
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    disabled={isLoading}
+                  >
+                    Forgot Password?
+                  </Button>
+                </div>
               )}
 
               <Button

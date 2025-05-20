@@ -482,9 +482,9 @@ const CopilotSection = () => {
             transition={{ duration: 0.5 }}
             className="text-center mb-8"
           >
-            <h2 className="text-2xl font-bold mb-2">Interview Preparation Assistant</h2>
+            <h2 className="text-2xl font-bold mb-2">Real-Time Interview Assistant</h2>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Generate a passkey to access our AI-powered interview assistant. Get real-time feedback and practice for your upcoming interviews.
+              Generate a passkey to access our AI-powered interview assistant through our browser extension. Get real-time answers during your actual interviews.
             </p>
           </motion.div>
           
@@ -519,9 +519,9 @@ const CopilotSection = () => {
                     <polyline points="14 2 14 8 20 8"/>
                   </svg>
                 </div>
-                <h3 className="font-medium">Resume Analysis</h3>
+                <h3 className="font-medium">Browser Extension</h3>
               </div>
-              <p className="text-sm text-muted-foreground">Upload your resume and get AI-powered insights to improve your chances.</p>
+              <p className="text-sm text-muted-foreground">Use our extension to enter your email and passkey to access real-time answers during interviews.</p>
             </div>
             
             <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -532,9 +532,9 @@ const CopilotSection = () => {
                     <path d="M12 8v4l3 3"/>
                   </svg>
                 </div>
-                <h3 className="font-medium">Mock Interviews</h3>
+                <h3 className="font-medium">Real-Time Answers</h3>
               </div>
-              <p className="text-sm text-muted-foreground">Practice with our AI interviewer and get feedback on your responses.</p>
+              <p className="text-sm text-muted-foreground">Get instant answers to interview questions based on your job role and company details.</p>
             </div>
             
             <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -545,9 +545,9 @@ const CopilotSection = () => {
                     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                   </svg>
                 </div>
-                <h3 className="font-medium">Personalized Tips</h3>
+                <h3 className="font-medium">Interview-Specific</h3>
               </div>
-              <p className="text-sm text-muted-foreground">Get customized advice based on your target role and company.</p>
+              <p className="text-sm text-muted-foreground">Your passkey links to specific interview details, ensuring relevant answers for your exact interview.</p>
             </div>
           </motion.div>
         </div>
@@ -586,7 +586,7 @@ const CopilotSection = () => {
               <CardHeader>
                 <CardTitle>Generate New Passkey</CardTitle>
                 <CardDescription>
-                  Schedule a new interview and get a passkey
+                  Enter your interview details to generate a passkey for our extension
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
