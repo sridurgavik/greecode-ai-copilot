@@ -38,11 +38,6 @@ const CopilotSection = () => {
   const [resumeUrl, setResumeUrl] = useState<string>("");
   const [resumeAnalysis, setResumeAnalysis] = useState<string>("");
   const [uploadError, setUploadError] = useState<string>("");
-  const [showPaymentPopup, setShowPaymentPopup] = useState<boolean>(false);
-  const [couponCode, setCouponCode] = useState<string>("");
-  const [couponApplied, setCouponApplied] = useState<boolean>(false);
-  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
-  const [couponError, setCouponError] = useState<string>("");
   const { toast } = useToast();
   const razorpayFormRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -232,9 +227,10 @@ const CopilotSection = () => {
     ).slice(0, 10); // Limit to 10 keywords
   };
 
-  // Handle payment popup
-  const handleShowPaymentPopup = () => {
-    // Validate form fields first
+  // Handle generate passkey
+  const handleGeneratePasskey = async () => {
+    setUploadError("");
+    
     if (!resumeFile) {
       setUploadError("Please upload your resume.");
       return;
@@ -258,96 +254,47 @@ const CopilotSection = () => {
       return;
     }
     
-    // Show payment popup
-    setShowPaymentPopup(true);
-  };
-
-  // Handle coupon code application
-  const handleApplyCoupon = () => {
-    if (!couponCode) {
+    if (!paymentComplete) {
       toast({
-        title: "Error",
-        description: "Please enter a coupon code.",
+        title: "Payment Required",
+        description: "Please complete the payment to generate a passkey.",
         variant: "destructive",
       });
       return;
     }
-
-    setCouponError("");
     
-    // Check for valid coupon codes
-    if (couponCode.toUpperCase() === "CRACKNOW") {
-      setCouponApplied(true);
-      setDiscountPercentage(84);
-      toast({
-        title: "Coupon Applied",
-        description: "You got 84% discount with CRACKNOW coupon!",
-      });
-    } else if (couponCode.toUpperCase() === "BUNNY") {
-      setCouponApplied(true);
-      setDiscountPercentage(100);
-      toast({
-        title: "Coupon Applied",
-        description: "You got 100% discount with BUNNY coupon!",
-      });
-    } else {
-      setCouponError("Invalid or expired coupon code");
-      toast({
-        title: "Invalid Coupon",
-        description: "The coupon code you entered is invalid or expired.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle payment completion
-  const handleCompletePayment = () => {
-    setPaymentProcessing(true);
-    
-    // If 100% discount, skip payment processing
-    if (discountPercentage === 100) {
-      setPaymentComplete(true);
-      setPaymentProcessing(false);
-      setShowPaymentPopup(false);
-      
-      // Generate passkey immediately
-      handleGeneratePasskey();
-      return;
-    }
-    
-    // Simulate payment processing
-    setTimeout(() => {
-      setPaymentComplete(true);
-      setPaymentProcessing(false);
-      setShowPaymentPopup(false);
-      
-      // Generate passkey after payment
-      handleGeneratePasskey();
-    }, 1500);
-  };
-
-  // Handle generate passkey
-  const handleGeneratePasskey = async () => {
-    setUploadError("");
     setIsLoading(true);
     
     try {
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("You must be logged in to generate a passkey.");
+      }
+      
       // Generate a random 6-digit passkey
       const newPasskey = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // In a real application, we would save this to the database
-      // For now, we'll just simulate a successful passkey generation
-      setTimeout(() => {
-        setGeneratedPasskey(newPasskey);
-        // Store the passkey in localStorage so it can be accessed in the settings
-        localStorage.setItem("generatedPasskey", newPasskey);
-        setIsLoading(false);
-        
-        toast({
-          title: "Passkey Generated",
-          description: "Your interview is scheduled successfully.",
-        });
-      }, 1000);
+      // Save the passkey to Supabase
+      await supabase.from("passkeys").insert({
+        passkey: newPasskey,
+        user_id: user.id,
+        job_role: jobRole,
+        company: company,
+        job_description: jobDescription || null,
+        resume_url: resumeUrl,
+        expires_at: new Date(date!.setHours(parseInt(time.split(':')[0]), parseInt(time.split(':')[1]))).toISOString(),
+        is_used: false,
+      });
+      
+      setGeneratedPasskey(newPasskey);
+      setIsLoading(false);
+      
+      toast({
+        title: "Passkey Generated",
+        description: "Your interview is scheduled successfully.",
+      });
     } catch (error) {
       console.error("Generate passkey error:", error);
       setIsLoading(false);
@@ -385,95 +332,6 @@ const CopilotSection = () => {
 
   return (
     <div className="space-y-4">
-      {/* Payment Popup */}
-      {showPaymentPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-background rounded-lg shadow-lg max-w-md w-full p-6"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Complete Payment</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0 rounded-full"
-                onClick={() => setShowPaymentPopup(false)}
-              >
-                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-                <span className="sr-only">Close</span>
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="bg-muted p-4 rounded-md">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Interview Passkey</span>
-                  <span className="font-semibold">₹299</span>
-                </div>
-                {couponApplied && (
-                  <div className="flex justify-between items-center text-sm mt-2">
-                    <span className="text-muted-foreground">Discount ({discountPercentage}%)</span>
-                    <span className="text-green-600">-₹{discountPercentage === 100 ? 299 : 250}</span>
-                  </div>
-                )}
-                <div className="border-t my-2"></div>
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Total</span>
-                  <span className="text-primary">
-                    {discountPercentage === 100 ? "₹0" : (discountPercentage === 84 ? "₹49" : "₹299")}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Payment Method</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="border rounded-md p-3 flex items-center space-x-2 cursor-pointer bg-muted/50">
-                    <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-primary"></div>
-                    </div>
-                    <span className="text-sm font-medium">Credit/Debit Card</span>
-                  </div>
-                  <div className="border rounded-md p-3 flex items-center space-x-2 cursor-pointer">
-                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground"></div>
-                    <span className="text-sm">UPI</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-4">
-                <Button 
-                  className="w-full" 
-                  onClick={handleCompletePayment}
-                  disabled={paymentProcessing}
-                >
-                  {paymentProcessing ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    discountPercentage === 100 ? 
-                    "Generate Passkey - Free" : 
-                    `Pay Now - ${discountPercentage === 84 ? "₹49" : "₹299"}`
-                  )}
-                </Button>
-              </div>
-              
-              <p className="text-xs text-muted-foreground text-center">
-                By proceeding, you agree to our Terms of Service and Privacy Policy.
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      )}
       {!showPasskeyForm ? (
         <div className="flex flex-col items-center justify-center py-12">
           <motion.div
@@ -590,69 +448,18 @@ const CopilotSection = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="jobRole">Job Role</Label>
-                    <Input
-                      id="jobRole"
-                      placeholder="Software Engineer, Designer, etc."
-                      value={jobRole}
-                      onChange={(e) => setJobRole(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company">Company</Label>
-                    <Input
-                      id="company"
-                      placeholder="Google, Facebook, etc."
-                      value={company}
-                      onChange={(e) => setCompany(e.target.value)}
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="resume">Upload Resume (PDF, DOC, DOCX)</Label>
+                  <Label htmlFor="resume">Upload Resume</Label>
                   <div className="flex items-center gap-2">
-                    <div className="relative w-full">
-                      {resumeFile ? (
-                        <div className="border rounded-md p-3 bg-muted/30">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div className="bg-primary/10 p-2 rounded-full">
-                                <FileUp className="h-4 w-4 text-primary" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium truncate max-w-[200px]">{resumeFile.name}</span>
-                                <span className="text-xs text-muted-foreground">{(resumeFile.size / 1024).toFixed(1)} KB</span>
-                              </div>
-                            </div>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => setResumeFile(null)}
-                              className="h-8 w-8 p-0 rounded-full"
-                            >
-                              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                              </svg>
-                              <span className="sr-only">Remove file</span>
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div 
-                          onClick={handleChooseFile}
-                          className="border-2 border-dashed border-muted-foreground/25 rounded-md p-6 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-                        >
-                          <div className="bg-primary/10 p-2 rounded-full mb-2">
-                            <FileUp className="h-5 w-5 text-primary" />
-                          </div>
-                          <p className="text-sm font-medium">Click to upload your resume</p>
-                          <p className="text-xs text-muted-foreground mt-1">PDF, DOC or DOCX (max 5MB)</p>
-                        </div>
-                      )}
+                    <div className="relative flex items-center w-full max-w-xs">
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={handleChooseFile} 
+                        className="w-full justify-start text-left font-normal truncate"
+                      >
+                        {resumeFile ? resumeFile.name : "Choose File"}
+                      </Button>
                       <Input
                         ref={fileInputRef}
                         id="resume"
@@ -662,8 +469,12 @@ const CopilotSection = () => {
                         className="hidden"
                         disabled={isLoading}
                       />
+                      {resumeFile && <FileUp className="h-4 w-4 text-primary absolute right-3" />}
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Upload your resume in PDF or DOC format
+                  </p>
                   {uploadError && (
                     <div className="text-destructive flex items-center text-sm mt-1">
                       <AlertCircle className="h-4 w-4 mr-1" />
@@ -679,16 +490,34 @@ const CopilotSection = () => {
                   </div>
                 )}
 
-
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="jobRole">Job Role</Label>
+                    <Input
+                      id="jobRole"
+                      placeholder="E.g., Frontend Developer"
+                      value={jobRole}
+                      onChange={(e) => setJobRole(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Company</Label>
+                    <Input
+                      id="company"
+                      placeholder="E.g., Google"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                    />
+                  </div>
+                </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="jobDescription">Job Description (optional)</Label>
+                  <Label htmlFor="jobDescription">Job Description (Optional)</Label>
                   <Input
                     id="jobDescription"
-                    placeholder="Paste the job description here..."
+                    placeholder="Paste job description here"
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
-                    className="min-h-[80px]"
                   />
                 </div>
 
@@ -705,7 +534,7 @@ const CopilotSection = () => {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {date ? format(date, "PPP") : "Pick a date"}
+                          {date ? format(date, "PPP") : "Select date"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
@@ -713,7 +542,6 @@ const CopilotSection = () => {
                           mode="single"
                           selected={date}
                           onSelect={setDate}
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                           initialFocus
                         />
                       </PopoverContent>
@@ -721,67 +549,20 @@ const CopilotSection = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="time">Interview Time</Label>
-                    <div className="flex gap-2 h-10"> {/* Fixed height to align with date picker */}
-                      <div className="w-1/3">
-                        <select 
-                          className="h-full w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          value={time.split(':')[0] || '12'}
-                          onChange={(e) => {
-                            const hour = e.target.value;
-                            const minute = time.split(':')[1] || '00';
-                            setTime(`${hour}:${minute}`);
-                          }}
-                        >
-                          <option value="" disabled>Hour</option>
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
-                            <option key={hour} value={hour.toString().padStart(2, '0')}>{hour}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="w-1/3">
-                        <select 
-                          className="h-full w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          value={time.split(':')[1] || '00'}
-                          onChange={(e) => {
-                            const hour = time.split(':')[0] || '12';
-                            const minute = e.target.value;
-                            setTime(`${hour}:${minute}`);
-                          }}
-                        >
-                          <option value="" disabled>Min</option>
-                          <option value="00">00</option>
-                          <option value="15">15</option>
-                          <option value="30">30</option>
-                          <option value="45">45</option>
-                        </select>
-                      </div>
-                      <div className="w-1/3">
-                        <select 
-                          className="h-full w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          value={time.includes('PM') ? 'PM' : 'AM'}
-                          onChange={(e) => {
-                            const hour = time.split(':')[0] || '12';
-                            const minute = time.split(':')[1] || '00';
-                            setTime(`${hour}:${minute} ${e.target.value}`);
-                          }}
-                        >
-                          <option value="" disabled>AM/PM</option>
-                          <option value="AM">AM</option>
-                          <option value="PM">PM</option>
-                        </select>
-                      </div>
-                    </div>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                    />
                   </div>
                 </div>
 
                 <div className="pt-4">
                   <div className="rounded-md border p-4">
-                    <div className="font-medium flex items-center">
-                      <span className="mr-2">🔑</span>
-                      Get Your Interview Passkey
-                    </div>
+                    <div className="font-medium">Payment</div>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Unlock your interview real-time assistance with a one-time passkey. Limited time special offer!
+                      Complete payment to generate your passkey
                     </p>
                     
                     {paymentError && (
@@ -791,66 +572,27 @@ const CopilotSection = () => {
                       </div>
                     )}
                     
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center w-full">
-                        <div className="flex-grow">
-                          <div className="flex flex-col w-full">
-                            <div className="flex items-center space-x-2">
-                              <Input 
-                                placeholder="Apply Coupon Code" 
-                                className="max-w-[200px]"
-                                value={couponCode}
-                                onChange={(e) => {
-                                  setCouponCode(e.target.value);
-                                  setCouponError("");
-                                }}
-                              />
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={handleApplyCoupon}
-                                disabled={!couponCode || couponApplied}
-                              >
-                                {couponApplied ? "Applied" : "Apply"}
-                              </Button>
-                            </div>
-                            {couponError && (
-                              <p className="text-xs text-destructive mt-1">{couponError}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center ml-4">
-                          {couponApplied && discountPercentage === 84 ? (
-                            <>
-                              <span className="line-through text-muted-foreground mr-2">₹299</span>
-                              <span className="text-primary font-semibold">₹49</span>
-                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">84% OFF</span>
-                            </>
-                          ) : couponApplied && discountPercentage === 100 ? (
-                            <>
-                              <span className="line-through text-muted-foreground mr-2">₹299</span>
-                              <span className="text-primary font-semibold">₹0</span>
-                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">100% OFF</span>
-                            </>
-                          ) : (
-                            <span className="text-primary font-semibold">₹299</span>
-                          )}
-                        </div>
+                    {!paymentComplete ? (
+                      <div ref={razorpayFormRef}></div>
+                    ) : (
+                      <div className="bg-primary/10 text-primary rounded-md p-3 text-sm flex items-center">
+                        <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        Payment completed
                       </div>
-                    </div>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 text-center">
-                    The generated passkey is valid for one-time use only
-                  </p>
                 </div>
               </CardContent>
               <CardFooter>
                 <Button 
-                  onClick={handleShowPaymentPopup} 
-                  disabled={isLoading}
+                  onClick={handleGeneratePasskey} 
+                  disabled={isLoading || !paymentComplete}
                   className="w-full"
                 >
-                  {isLoading ? "Processing..." : "Generate Passkey"}
+                  {isLoading ? "Generating..." : "Generate Passkey"}
                 </Button>
               </CardFooter>
             </Card>
