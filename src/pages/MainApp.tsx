@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "@/integrations/firebase/client";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -23,6 +24,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
   const [isFirstVisit, setIsFirstVisit] = useState<boolean>(false);
   const [showResourcesDialog, setShowResourcesDialog] = useState<boolean>(false);
   const [showPlansDialog, setShowPlansDialog] = useState<boolean>(false);
+  const { toast } = useToast();
   
   // Fetch user data on component mount
   useEffect(() => {
@@ -452,7 +454,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
               <div className="absolute top-3 right-3 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
                 Current Plan
               </div>
-              <h3 className="font-medium text-lg mb-2">Pay Per Session</h3>
+              <h3 className="font-medium text-lg mb-2 pr-24">Pay Per Session</h3>
               <p className="text-sm text-muted-foreground mb-4">Perfect for occasional interview preparation</p>
               
               <div className="space-y-2 mb-4 flex-grow">
@@ -535,7 +537,21 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                   <span className="text-sm text-muted-foreground ml-1">/ month</span>
                 </div>
                 
-                <Button variant="default" className="w-full">
+                <Button 
+                  variant="default" 
+                  className="w-full"
+                  onClick={() => {
+                    // Replace with your actual Razorpay payment link
+                    window.open('https://rzp.io/l/greecode-genz-plan', '_blank');
+                    // Close the dialog after opening payment page
+                    setShowPlansDialog(false);
+                    // Show a toast notification
+                    toast({
+                      title: "Payment Started",
+                      description: "You'll be redirected to the secure payment page.",
+                    });
+                  }}
+                >
                   Upgrade Now
                 </Button>
               </div>
