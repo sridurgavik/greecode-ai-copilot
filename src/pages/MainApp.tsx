@@ -452,7 +452,26 @@ const MainApp = ({ onLogout }: MainAppProps) => {
             <Button 
               variant="outline" 
               className="w-full justify-start text-left font-normal"
-              onClick={() => window.open('#', '_blank')}
+              onClick={() => {
+                // Create a link element
+                const link = document.createElement('a');
+                // Set the href to the PDF file
+                link.href = '/resources/greecode-user-manual.pdf';
+                // Set the download attribute to suggest a filename
+                link.download = 'Greecode-User-Manual.pdf';
+                // Append the link to the body
+                document.body.appendChild(link);
+                // Trigger the download
+                link.click();
+                // Clean up
+                document.body.removeChild(link);
+                
+                // Show a toast notification
+                toast({
+                  title: "User Manual Downloaded",
+                  description: "The Greecode User Manual has been downloaded to your device.",
+                });
+              }}
             >
               <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>

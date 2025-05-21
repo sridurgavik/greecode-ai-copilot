@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greecode User Manual</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h1, h2, h3, h4 {
+      color: #0ea5e9;
+      margin-top: 1.5em;
+    }
+    
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 1em;
+      border-bottom: 2px solid #0ea5e9;
+      padding-bottom: 0.5em;
+    }
+    
+    .logo {
+      text-align: center;
+      margin-bottom: 2em;
+    }
+    
+    .logo svg {
+      width: 80px;
+      height: 80px;
+    }
+    
+    .section {
+      margin-bottom: 2em;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 1em;
+    }
+    
+    .feature {
+      background-color: #f9f9f9;
+      border-left: 4px solid #0ea5e9;
+      padding: 1em;
+      margin: 1em 0;
+    }
+    
+    .tip {
+      background-color: #e6f7ff;
+      border-left: 4px solid #1890ff;
+      padding: 1em;
+      margin: 1em 0;
+    }
+    
+    .warning {
+      background-color: #fff7e6;
+      border-left: 4px solid #fa8c16;
+      padding: 1em;
+      margin: 1em 0;
+    }
+    
+    .steps {
+      list-style-type: decimal;
+      padding-left: 1.5em;
+    }
+    
+    .steps li {
+      margin-bottom: 0.5em;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+    }
+    
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    
+    th {
+      background-color: #f2f2f2;
+    }
+    
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 1em auto;
+      border: 1px solid #ddd;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 3em;
+      color: #666;
+      font-size: 0.9em;
+    }
+    
+    .toc {
+      background-color: #f9f9f9;
+      padding: 1em;
+      margin: 1em 0;
+    }
+    
+    .toc ul {
+      list-style-type: none;
+      padding-left: 1em;
+    }
+    
+    .toc li {
+      margin-bottom: 0.5em;
+    }
+    
+    .toc a {
+      text-decoration: none;
+      color: #0ea5e9;
+    }
+    
+    .toc a:hover {
+      text-decoration: underline;
+    }
+    
+    @media print {
+      body {
+        font-size: 12pt;
+      }
+      
+      h1 {
+        font-size: 24pt;
+      }
+      
+      h2 {
+        font-size: 18pt;
+      }
+      
+      h3 {
+        font-size: 14pt;
+      }
+      
+      .no-print {
+        display: none;
+      }
+      
+      a {
+        color: #000;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="80" height="80" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  </div>
+  
+  <h1>Greecode User Manual</h1>
+  
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+      <li><a href="#introduction">1. Introduction</a></li>
+      <li><a href="#getting-started">2. Getting Started</a></li>
+      <li><a href="#dashboard">3. Dashboard</a></li>
+      <li><a href="#copilot">4. Copilot Section</a></li>
+      <li><a href="#pro">5. Pro Section</a></li>
+      <li><a href="#interview-practice">6. Interview Practice</a></li>
+      <li><a href="#passkeys">7. Passkeys & Scheduled Interviews</a></li>
+      <li><a href="#genz-plan">8. Genz Plan Features</a></li>
+      <li><a href="#troubleshooting">9. Troubleshooting</a></li>
+      <li><a href="#faq">10. Frequently Asked Questions</a></li>
+    </ul>
+  </div>
+  
+  <div id="introduction" class="section">
+    <h2>1. Introduction</h2>
+    <p>Welcome to Greecode, your AI-powered interview assistant for technical interviews. This user manual provides comprehensive guidance on how to use Greecode effectively to prepare for technical interviews, schedule practice sessions, and improve your interview skills.</p>
+    
+    <div class="feature">
+      <h3>Key Features</h3>
+      <ul>
+        <li>AI-powered interview practice with real-time feedback</li>
+        <li>Passkey generation for scheduled interviews</li>
+        <li>Interview rescheduling capabilities</li>
+        <li>Genz plan with premium features</li>
+        <li>Technical interview preparation resources</li>
+      </ul>
+    </div>
+  </div>
+  
+  <div id="getting-started" class="section">
+    <h2>2. Getting Started</h2>
+    <p>This section covers the basics of setting up your Greecode account and navigating the interface.</p>
+    
+    <h3>2.1 Creating an Account</h3>
+    <ol class="steps">
+      <li>Visit the Greecode website or open the application.</li>
+      <li>Click on "Sign Up" to create a new account.</li>
+      <li>Enter your email address and create a password.</li>
+      <li>Verify your email address by clicking the link sent to your inbox.</li>
+      <li>Complete your profile by adding your name and other details.</li>
+    </ol>
+    
+    <h3>2.2 Logging In</h3>
+    <ol class="steps">
+      <li>Open the Greecode application.</li>
+      <li>Enter your email and password.</li>
+      <li>Click "Login" to access your dashboard.</li>
+    </ol>
+    
+    <div class="tip">
+      <h4>Tip</h4>
+      <p>If you forget your password, click on "Forgot Password" on the login page and follow the instructions sent to your email to reset it.</p>
+    </div>
+  </div>
+  
+  <div id="dashboard" class="section">
+    <h2>3. Dashboard</h2>
+    <p>The dashboard is your central hub for accessing all Greecode features and monitoring your interview preparation progress.</p>
+    
+    <h3>3.1 Dashboard Layout</h3>
+    <p>The dashboard consists of several key areas:</p>
+    <ul>
+      <li><strong>Header:</strong> Contains your profile information, theme toggle, and logout button.</li>
+      <li><strong>Welcome Section:</strong> Displays a personalized greeting and your current status.</li>
+      <li><strong>Quick Actions:</strong> Provides shortcuts to frequently used features.</li>
+      <li><strong>Main Tabs:</strong> Allows you to switch between Copilot and Pro sections.</li>
+    </ul>
+    
+    <h3>3.2 Quick Actions</h3>
+    <p>The Quick Actions section provides immediate access to key features:</p>
+    <ul>
+      <li><strong>Interview Practice:</strong> Start a practice session with the AI assistant.</li>
+      <li><strong>Generate Passkey:</strong> Create a passkey for a scheduled interview.</li>
+      <li><strong>Reschedule Interview:</strong> Change the date and time of a scheduled interview.</li>
+    </ul>
+  </div>
+  
+  <div id="copilot" class="section">
+    <h2>4. Copilot Section</h2>
+    <p>The Copilot section is designed to help you prepare for technical interviews through AI-assisted practice sessions.</p>
+    
+    <h3>4.1 Generating Passkeys</h3>
+    <p>Passkeys are unique codes that allow you to access scheduled interviews. To generate a passkey:</p>
+    <ol class="steps">
+      <li>Navigate to the Copilot section from the main tabs.</li>
+      <li>Select the date and time for your interview.</li>
+      <li>Click "Generate Passkey".</li>
+      <li>Your passkey will be displayed and can be shared with your interviewer.</li>
+    </ol>
+    
+    <div class="feature">
+      <h4>Passkey Limitations</h4>
+      <p>Free users can generate one passkey per session. Genz plan users can generate up to 5 passkeys per month.</p>
+    </div>
+    
+    <h3>4.2 Scheduling Interviews</h3>
+    <p>To schedule an interview:</p>
+    <ol class="steps">
+      <li>Go to the Copilot section.</li>
+      <li>Select "Schedule Interview".</li>
+      <li>Choose a date and time slot.</li>
+      <li>Add any notes or specific topics you want to cover.</li>
+      <li>Click "Confirm" to schedule the interview.</li>
+    </ol>
+  </div>
+  
+  <div id="pro" class="section">
+    <h2>5. Pro Section</h2>
+    <p>The Pro section offers advanced features for comprehensive interview preparation.</p>
+    
+    <h3>5.1 AI Chat</h3>
+    <p>The AI Chat feature allows you to interact with an AI assistant to practice interview questions and receive feedback:</p>
+    <ol class="steps">
+      <li>Navigate to the Pro section from the main tabs.</li>
+      <li>Select the "AI Chat" tab.</li>
+      <li>Type your question or select from suggested topics.</li>
+      <li>Engage in a conversation with the AI to practice your responses.</li>
+      <li>Receive real-time feedback and suggestions for improvement.</li>
+    </ol>
+    
+    <h3>5.2 Dashboard</h3>
+    <p>The Pro Dashboard provides insights into your interview preparation progress:</p>
+    <ul>
+      <li><strong>Performance Metrics:</strong> Track your progress across different interview topics.</li>
+      <li><strong>Scheduled Interviews:</strong> View upcoming interviews and their details.</li>
+      <li><strong>Practice History:</strong> Review past practice sessions and feedback.</li>
+    </ul>
+  </div>
+  
+  <div id="interview-practice" class="section">
+    <h2>6. Interview Practice</h2>
+    <p>Interview Practice is a core feature of Greecode that helps you prepare for technical interviews through simulated sessions.</p>
+    
+    <h3>6.1 Starting a Practice Session</h3>
+    <ol class="steps">
+      <li>Click on "Interview Practice" in the Quick Actions section.</li>
+      <li>Select the type of interview you want to practice (e.g., Frontend, Backend, Full Stack).</li>
+      <li>Choose the difficulty level (Easy, Medium, Hard).</li>
+      <li>Select specific topics you want to focus on (optional).</li>
+      <li>Click "Start Practice" to begin the session.</li>
+    </ol>
+    
+    <h3>6.2 During the Practice Session</h3>
+    <p>During the practice session:</p>
+    <ul>
+      <li>The AI will ask you technical questions related to your selected topics.</li>
+      <li>Respond to the questions as you would in a real interview.</li>
+      <li>Receive immediate feedback on your answers.</li>
+      <li>Ask for hints or clarification if needed.</li>
+      <li>The AI will adapt the difficulty based on your performance.</li>
+    </ul>
+    
+    <div class="tip">
+      <h4>Tip</h4>
+      <p>Treat the practice session as a real interview to get the most benefit. Speak clearly and organize your thoughts before responding.</p>
+    </div>
+  </div>
+  
+  <div id="passkeys" class="section">
+    <h2>7. Passkeys & Scheduled Interviews</h2>
+    <p>Passkeys are unique codes that grant access to scheduled interviews. This section explains how to manage your passkeys and scheduled interviews.</p>
+    
+    <h3>7.1 Viewing Your Passkeys</h3>
+    <p>To view your generated passkeys:</p>
+    <ol class="steps">
+      <li>Go to the Copilot section.</li>
+      <li>Select "View Passkeys".</li>
+      <li>You'll see a list of all your active passkeys along with their associated interview details.</li>
+    </ol>
+    
+    <h3>7.2 Rescheduling Interviews</h3>
+    <p>To reschedule an interview:</p>
+    <ol class="steps">
+      <li>Click on "Reschedule Interview" in the dashboard.</li>
+      <li>Select the interview you want to reschedule from the list.</li>
+      <li>Choose a new date and time.</li>
+      <li>Click "Update" to confirm the changes.</li>
+      <li>The system will update the interview details while keeping the same passkey.</li>
+    </ol>
+    
+    <div class="warning">
+      <h4>Important</h4>
+      <p>Make sure to reschedule interviews at least 24 hours in advance to ensure proper notification to all participants.</p>
+    </div>
+  </div>
+  
+  <div id="genz-plan" class="section">
+    <h2>8. Genz Plan Features</h2>
+    <p>The Genz plan offers premium features for serious interview preparation.</p>
+    
+    <h3>8.1 Genz Plan Benefits</h3>
+    <ul>
+      <li><strong>5 interviews per month:</strong> Generate up to 5 passkeys each month.</li>
+      <li><strong>Priority assistance:</strong> Get faster responses during practice sessions.</li>
+      <li><strong>Advanced analytics:</strong> Receive detailed feedback and performance metrics.</li>
+      <li><strong>Unlimited practice:</strong> Access unlimited AI chat practice sessions.</li>
+      <li><strong>Premium support:</strong> Get priority customer support.</li>
+    </ul>
+    
+    <h3>8.2 Upgrading to Genz Plan</h3>
+    <ol class="steps">
+      <li>Click on "Upgrade plan" in your dashboard.</li>
+      <li>Review the plan details and pricing.</li>
+      <li>Click "Upgrade Now".</li>
+      <li>Complete the payment process.</li>
+      <li>Your account will be immediately upgraded to the Genz plan.</li>
+    </ol>
+    
+    <div class="feature">
+      <h4>Tracking Usage</h4>
+      <p>Genz plan users can track their interview usage in the dashboard, which displays the number of interviews used and remaining for the current month.</p>
+    </div>
+  </div>
+  
+  <div id="troubleshooting" class="section">
+    <h2>9. Troubleshooting</h2>
+    <p>This section provides solutions to common issues you might encounter while using Greecode.</p>
+    
+    <h3>9.1 Login Issues</h3>
+    <ul>
+      <li><strong>Forgot Password:</strong> Use the "Forgot Password" link on the login page to reset your password.</li>
+      <li><strong>Email Verification:</strong> Check your spam folder if you don't receive the verification email.</li>
+      <li><strong>Account Locked:</strong> Contact support if your account is locked after multiple failed login attempts.</li>
+    </ul>
+    
+    <h3>9.2 Technical Issues</h3>
+    <ul>
+      <li><strong>Slow Performance:</strong> Try refreshing the page or clearing your browser cache.</li>
+      <li><strong>AI Not Responding:</strong> If the AI assistant stops responding, restart the practice session.</li>
+      <li><strong>Passkey Generation Failure:</strong> Ensure you have available passkey credits or upgrade your plan.</li>
+    </ul>
+    
+    <h3>9.3 Billing Issues</h3>
+    <ul>
+      <li><strong>Payment Failure:</strong> Verify your payment method details are correct.</li>
+      <li><strong>Subscription Not Active:</strong> Check your account status in the dashboard.</li>
+      <li><strong>Refund Requests:</strong> Contact support within 7 days of payment for refund inquiries.</li>
+    </ul>
+  </div>
+  
+  <div id="faq" class="section">
+    <h2>10. Frequently Asked Questions</h2>
+    
+    <h3>General Questions</h3>
+    <p><strong>Q: What is Greecode?</strong><br>
+    A: Greecode is an AI-powered platform designed to help you prepare for technical interviews through practice sessions, scheduled interviews, and personalized feedback.</p>
+    
+    <p><strong>Q: Do I need technical knowledge to use Greecode?</strong><br>
+    A: Yes, Greecode is designed for individuals with some technical background who are preparing for technical interviews.</p>
+    
+    <h3>Subscription Questions</h3>
+    <p><strong>Q: What's the difference between the free plan and Genz plan?</strong><br>
+    A: The free plan (Pay Per Session) allows you to pay for individual sessions, while the Genz plan offers 5 interviews per month, unlimited practice sessions, and advanced features for a monthly subscription fee.</p>
+    
+    <p><strong>Q: Can I cancel my subscription?</strong><br>
+    A: Yes, you can cancel your subscription at any time from your account settings. Your access will continue until the end of your current billing period.</p>
+    
+    <h3>Technical Questions</h3>
+    <p><strong>Q: How accurate is the AI feedback?</strong><br>
+    A: The AI provides feedback based on industry standards and best practices, but it's designed to be a practice tool rather than a definitive assessment.</p>
+    
+    <p><strong>Q: Can I use Greecode on mobile devices?</strong><br>
+    A: Yes, Greecode is optimized for both desktop and mobile devices, allowing you to practice interviews anywhere.</p>
+    
+    <p><strong>Q: How do I report a bug or suggest a feature?</strong><br>
+    A: Use the Help & Support option in the Resources menu to report bugs or suggest features.</p>
+  </div>
+  
+  <footer>
+    <p>© 2025 Greecode. All rights reserved.</p>
+    <p>Version 1.0.0</p>
+  </footer>
+</body>
+</html>
