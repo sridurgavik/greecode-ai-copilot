@@ -1,0 +1,267 @@
+
+import { useState, useRef, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageCircle, Send, Copy } from "lucide-react";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
+const GroqChat = () => {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content: "Welcome to GreecodePro.ai! How can I help you today?",
+      timestamp: new Date(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  // Auto scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userMessage = {
+      role: "user" as const,
+      content: input,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+    setIsTyping(true);
+
+    try {
+      // Check if we're in extension environment
+      const isExtensionEnvironment = typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage;
+
+      if (isExtensionEnvironment) {
+        // Send message to background script for processing
+        chrome.runtime.sendMessage(
+          { type: "AI_REQUEST", message: input },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              throw new Error(chrome.runtime.lastError.message);
+            }
+
+            const fullResponse = response?.success ? response.message : "Sorry, I couldn't process your request.";
+            simulateRealTimeTyping(fullResponse);
+          }
+        );
+      } else {
+        // If not in extension environment, simulate a response with realistic typing
+        simulateAPIResponse(input);
+      }
+    } catch (error) {
+      console.error("Send message error:", error);
+      setIsLoading(false);
+      setIsTyping(false);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Simulate API response for testing/fallback
+  const simulateAPIResponse = (userInput: string) => {
+    // Generate more contextual responses based on user input
+    const userInputLower = userInput.toLowerCase();
+    let responseText = "";
+
+    // Technical skills responses
+    if (userInputLower.includes("algorithm") || userInputLower.includes("data structure")) {
+      responseText = "Algorithms and data structures are fundamental to technical interviews. Here are key areas to focus on:\n\n1. **Time & Space Complexity Analysis** - Learn Big O notation and how to analyze your solutions\n2. **Arrays & Strings** - Two-pointer technique, sliding window, in-place operations\n3. **Linked Lists** - Traversal, reversal, detecting cycles\n4. **Trees & Graphs** - DFS, BFS, binary search trees, topological sort\n5. **Dynamic Programming** - Memoization, tabulation, common patterns\n6. **Sorting & Searching** - QuickSort, MergeSort, binary search variants\n\nWould you like me to elaborate on any specific area?";
+    } else if (userInputLower.includes("system design")) {
+      responseText = "System design interviews assess your ability to design scalable, reliable, and maintainable systems. Here's a structured approach:\n\n1. **Requirements Clarification** - Functional & non-functional requirements\n2. **Capacity Estimation** - Traffic, storage, bandwidth calculations\n3. **System API Design** - Define key endpoints and data models\n4. **Database Schema** - SQL vs NoSQL, sharding strategies\n5. **High-Level Components** - Services, load balancers, caches\n6. **Detailed Design** - Focus on critical components\n7. **Bottlenecks & Tradeoffs** - Identify potential issues and solutions\n\nPopular topics include: URL shorteners, social media feeds, chat applications, and distributed file systems.";
+    } else if (userInputLower.includes("javascript") || userInputLower.includes("frontend") || userInputLower.includes("front-end") || userInputLower.includes("react")) {
+      responseText = "For frontend/JavaScript interviews, focus on these key areas:\n\n1. **JavaScript Fundamentals** - Closures, prototypes, this keyword, ES6+ features\n2. **Asynchronous JS** - Promises, async/await, event loop\n3. **DOM Manipulation** - Events, bubbling, delegation\n4. **React Core Concepts** - Virtual DOM, component lifecycle, hooks, state management\n5. **Performance Optimization** - Code splitting, memoization, lazy loading\n6. **Browser APIs** - Storage, fetch, service workers\n7. **CSS & Layout** - Flexbox, Grid, responsive design\n\nFor React specifically, understand hooks deeply (useState, useEffect, useContext, useReducer) and state management patterns.";
+    } else if (userInputLower.includes("backend") || userInputLower.includes("back-end") || userInputLower.includes("api") || userInputLower.includes("server")) {
+      responseText = "For backend engineering interviews, focus on these key areas:\n\n1. **API Design** - RESTful principles, GraphQL, authentication/authorization\n2. **Databases** - SQL vs NoSQL, indexing, query optimization, transactions\n3. **Caching Strategies** - Redis, in-memory caching, cache invalidation\n4. **Message Queues** - Kafka, RabbitMQ, async processing\n5. **Microservices** - Service boundaries, communication patterns, deployment\n6. **Security** - OWASP top 10, input validation, rate limiting\n7. **Scalability** - Horizontal vs vertical scaling, stateless design\n\nBe prepared to discuss tradeoffs between different architectural decisions and how they impact performance, reliability, and maintainability.";
+    } else if (userInputLower.includes("behavioral") || userInputLower.includes("soft skill")) {
+      responseText = "Behavioral interviews assess your soft skills and past experiences. Prepare using the STAR method (Situation, Task, Action, Result):\n\n**Common Questions:**\n1. Describe a challenging project you worked on\n2. Tell me about a time you disagreed with a team member\n3. How do you handle tight deadlines?\n4. Describe a situation where you showed leadership\n5. How do you prioritize competing tasks?\n\n**Key Soft Skills to Highlight:**\n- Communication & collaboration\n- Problem-solving & critical thinking\n- Adaptability & learning mindset\n- Leadership & initiative\n- Time management & organization\n\nPrepare 5-7 detailed stories from your experience that can be adapted to different behavioral questions.";
+    } else if (userInputLower.includes("resume") || userInputLower.includes("cv")) {
+      responseText = "For a strong technical resume:\n\n1. **Format & Structure**\n   - Clean, single-page layout (2 pages max for senior roles)\n   - Consistent formatting and bullet points\n   - Include GitHub/portfolio links\n\n2. **Content Best Practices**\n   - Use action verbs and quantify achievements (e.g., "Reduced latency by 40%")\n   - Focus on impact, not just responsibilities\n   - Tailor skills section to job description keywords\n   - Include relevant projects with technical details\n\n3. **ATS Optimization**\n   - Use standard section headings\n   - Incorporate keywords from job descriptions\n   - Avoid complex formatting or tables\n\nRemember to customize your resume for each application to highlight the most relevant experience.";
+    } else if (userInputLower.includes("hello") || userInputLower.includes("hi")) {
+      responseText = "Hello! I'm your technical interview preparation assistant. I can help with:\n\n- Algorithm and data structure problems\n- System design concepts\n- Frontend/Backend technical questions\n- Behavioral interview preparation\n- Resume optimization\n- Mock interview practice\n\nWhat specific area would you like to focus on today?";
+    } else if (userInputLower.includes("interview")) {
+      responseText = "Interview preparation requires a multi-faceted approach:\n\n1. **Research the Company** - Understand their products, culture, and recent news\n\n2. **Technical Preparation**\n   - Review core CS fundamentals (algorithms, data structures)\n   - Practice coding problems on platforms like LeetCode\n   - Prepare for system design if applicable\n   - Review the tech stack used by the company\n\n3. **Behavioral Preparation**\n   - Prepare stories using the STAR method\n   - Practice explaining your past projects concisely\n\n4. **Questions to Ask** - Prepare thoughtful questions about the role, team, and company\n\nWhich specific aspect would you like to focus on?";
+    } else if (userInputLower.includes("python") || userInputLower.includes("java") || userInputLower.includes("c++") || userInputLower.includes("programming")) {
+      responseText = "For programming language interviews, focus on these areas:\n\n1. **Language-Specific Features**\n   - Python: List comprehensions, generators, decorators, context managers\n   - Java: Collections framework, streams, concurrency, garbage collection\n   - C++: Memory management, STL, templates, move semantics\n\n2. **OOP Principles**\n   - Inheritance, encapsulation, polymorphism, abstraction\n   - Design patterns and their applications\n\n3. **Memory Management**\n   - Stack vs heap allocation\n   - Reference counting vs garbage collection\n\n4. **Performance Considerations**\n   - Time/space complexity analysis\n   - Language-specific optimizations\n\nWhat specific language or concept would you like to explore further?";
+    } else {
+      responseText = "I'm your technical interview preparation assistant, specialized in helping with:\n\n1. **Technical Topics**\n   - Algorithms & data structures\n   - System design principles\n   - Frontend/Backend concepts\n   - Language-specific questions (JavaScript, Python, Java, etc.)\n\n2. **Soft Skills**\n   - Behavioral interview preparation\n   - Communication strategies\n   - Problem-solving approaches\n\n3. **Career Guidance**\n   - Resume optimization\n   - Portfolio development\n   - Interview strategies\n\nPlease let me know which specific area you'd like assistance with, and I can provide detailed guidance.";
+    }
+
+    // Simulate typing delay
+    setTimeout(() => {
+      simulateRealTimeTyping(responseText);
+    }, 800);
+  };
+
+  const simulateRealTimeTyping = (fullResponse: string) => {
+    // Create a temporary assistant message for the typing effect
+    const assistantMessage = {
+      role: "assistant" as const,
+      content: "",
+      timestamp: new Date(),
+    };
+    
+    setMessages((prev) => [...prev, assistantMessage]);
+    
+    let index = 0;
+    const characterDelay = 15; // Time between characters in ms
+    
+    // Simulate typing character by character
+    const typingInterval = setInterval(() => {
+      if (index < fullResponse.length) {
+        // Update the last message in the array with one more character
+        setMessages(prev => {
+          const updated = [...prev];
+          const lastMessage = updated[updated.length - 1];
+          updated[updated.length - 1] = {
+            ...lastMessage,
+            content: fullResponse.substring(0, index + 1)
+          };
+          return updated;
+        });
+        
+        index++;
+      } else {
+        // Typing complete
+        clearInterval(typingInterval);
+        setIsLoading(false);
+        setIsTyping(false);
+      }
+    }, characterDelay);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleCopyMessage = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast({
+        title: "Copied",
+        description: "Message copied to clipboard.",
+      });
+    } catch (error) {
+      console.error("Copy error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to copy message.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card className="flex flex-col h-[500px] overflow-hidden">
+      <CardHeader className="pb-3 shrink-0">
+        <CardTitle className="flex items-center">
+          <MessageCircle className="mr-2 h-5 w-5" />
+          GreecodePro.ai Assistant
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col pt-0 overflow-hidden">
+        <div className="flex-1 overflow-y-auto pr-1 mb-3 space-y-4 scrollbar-thin">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              } mb-2`}
+            >
+              <div
+                className={`max-w-[85%] p-3 rounded-lg shadow-sm ${
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <div className="break-words whitespace-pre-wrap">{message.content}</div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 opacity-50 hover:opacity-100 shrink-0 -mr-1 -mt-1"
+                    onClick={() => handleCopyMessage(message.content)}
+                    aria-label="Copy message"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div
+                  className={`text-xs mt-1 ${
+                    message.role === "user"
+                      ? "text-primary-foreground/70"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {message.timestamp.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                </div>
+              </div>
+            </div>
+          ))}
+          {isTyping && (
+            <div className="flex justify-start mb-2">
+              <div className="max-w-[85%] p-3 rounded-lg bg-muted shadow-sm">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-150"></div>
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-300"></div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} className="h-1" />
+        </div>
+        <div className="flex items-center space-x-2 pt-2 border-t mt-auto">
+          <Input
+            placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isLoading}
+            className="flex-1 focus-visible:ring-1"
+            aria-label="Message input"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={isLoading || !input.trim()}
+            size="icon"
+            className="shrink-0"
+            aria-label="Send message"
+          >
+            {isLoading ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default GroqChat;

@@ -59,7 +59,7 @@ const ProSection = () => {
   const [selectedText, setSelectedText] = useState<string>("");
   const [aiResponse, setAiResponse] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [activeTab, setActiveTab] = useState<string>("chat");
   const [githubUrl, setGithubUrl] = useState<string>("");
   const [linkedinUrl, setLinkedinUrl] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -76,6 +76,21 @@ const ProSection = () => {
   const { toast } = useToast();
   const { isExtensionEnvironment, sendTabMessage } = useChromeAPI();
   
+  // Event listener for setting dashboard tab
+  useEffect(() => {
+    const handleSetDashboardTab = (event: CustomEvent) => {
+      if (event.detail?.tab === "dashboard") {
+        setActiveTab("dashboard");
+      }
+    };
+    
+    window.addEventListener("setDashboardTab", handleSetDashboardTab as EventListener);
+    
+    return () => {
+      window.removeEventListener("setDashboardTab", handleSetDashboardTab as EventListener);
+    };
+  }, []);
+
   // Load user profile data when component mounts
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -363,11 +378,15 @@ const ProSection = () => {
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs defaultValue="chat" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="dashboard">User Dashboard</TabsTrigger>
           <TabsTrigger value="chat">AI Chat</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="chat" className="space-y-4">
+          <GroqChat />
+        </TabsContent>
         
         <TabsContent value="dashboard" className="space-y-4">
           <Card>
@@ -750,10 +769,6 @@ const ProSection = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="chat" className="space-y-4">
-          <GroqChat />
         </TabsContent>
       </Tabs>
     </div>
