@@ -1,10 +1,8 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
 export default function PaymentFailed() {
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,12 +42,12 @@ export default function PaymentFailed() {
           <div className="mt-6 flex space-x-4">
             <Button
               variant="outline"
-              onClick={() => navigate("/")}
+              onClick={() => window.location.href = "/"}
             >
               Return to Dashboard
             </Button>
             <Button
-              onClick={() => navigate("/#plans")}
+              onClick={() => window.location.href = "/#plans"}
             >
               Try Again
             </Button>

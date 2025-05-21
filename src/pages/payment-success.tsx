@@ -1,14 +1,18 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from "@/integrations/firebase/client";
 import { doc, updateDoc } from "firebase/firestore";
 
 export default function PaymentSuccess() {
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Add event listener for navigation completion
+    const handleNavigationComplete = () => {
+      // Refresh the page to show updated plan
+      window.location.reload();
+    };
+
     const updateUserPlan = async () => {
       try {
         const user = auth.currentUser;
@@ -36,7 +40,7 @@ export default function PaymentSuccess() {
 
         // Redirect to main app
         setTimeout(() => {
-          navigate("/");
+          window.location.href = "/";
         }, 2000);
       } catch (error) {
         console.error("Error updating user plan:", error);
