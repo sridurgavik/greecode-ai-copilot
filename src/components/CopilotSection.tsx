@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { CalendarIcon, Copy, FileUp, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { auth, db } from "@/integrations/firebase/client";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, addDoc, Timestamp } from "firebase/firestore";
 
 // Types
 interface PasskeyData {
@@ -43,9 +45,76 @@ const CopilotSection = () => {
   const [couponApplied, setCouponApplied] = useState<boolean>(false);
   const [discountPercentage, setDiscountPercentage] = useState<number>(0);
   const [couponError, setCouponError] = useState<string>("");
+  // Genz plan tracking
+  const [userPlan, setUserPlan] = useState<string>("Pay Per Session");
+  const [interviewsUsed, setInterviewsUsed] = useState<number>(0);
+  const [interviewsRemaining, setInterviewsRemaining] = useState<number>(0);
+  const [isGenzPlan, setIsGenzPlan] = useState<boolean>(false);
+  const [isLoadingPlan, setIsLoadingPlan] = useState<boolean>(true);
   const { toast } = useToast();
   const razorpayFormRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check user's subscription status and track interview usage
+  useEffect(() => {
+    const checkUserSubscription = async () => {
+      setIsLoadingPlan(true);
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setIsLoadingPlan(false);
+          return;
+        }
+
+        // Get user document from Firestore
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        const userData = userDoc.data();
+
+        if (userData) {
+          // Check if user has a subscription
+          if (userData.subscription && userData.subscription.plan) {
+            // Check if subscription is active
+            const isActive = userData.subscription.status === "active";
+            const endDate = userData.subscription.endDate ? new Date(userData.subscription.endDate) : null;
+            const isValid = endDate ? new Date() < endDate : false;
+            
+            if (isActive && isValid && userData.subscription.plan === "genz") {
+              setUserPlan("Genz");
+              setIsGenzPlan(true);
+              
+              // Get the current month's interview usage
+              const currentMonth = new Date().getMonth();
+              const currentYear = new Date().getFullYear();
+              
+              // Check if interviews_used exists and has data for current month
+              const interviewsUsedThisMonth = userData.interviews_used?.[`${currentYear}-${currentMonth}`] || 0;
+              setInterviewsUsed(interviewsUsedThisMonth);
+              setInterviewsRemaining(Math.max(0, 5 - interviewsUsedThisMonth));
+              
+              // If user has remaining interviews, set payment as complete
+              if (5 - interviewsUsedThisMonth > 0) {
+                setPaymentComplete(true);
+              }
+            } else {
+              setUserPlan("Pay Per Session");
+              setIsGenzPlan(false);
+            }
+          } else {
+            setUserPlan("Pay Per Session");
+            setIsGenzPlan(false);
+          }
+        }
+        
+        setIsLoadingPlan(false);
+      } catch (error) {
+        console.error("Error checking subscription:", error);
+        setIsLoadingPlan(false);
+      }
+    };
+    
+    checkUserSubscription();
+  }, []);
 
   // Check for payment status changes from URL parameters
   useEffect(() => {
@@ -258,8 +327,20 @@ const CopilotSection = () => {
       return;
     }
     
-    // Show payment popup
-    setShowPaymentPopup(true);
+    // Check if user is on Genz plan with remaining interviews
+    if (isGenzPlan && interviewsRemaining > 0) {
+      // Skip payment and generate passkey directly
+      setPaymentComplete(true);
+      handleGeneratePasskey();
+      
+      toast({
+        title: "Genz Plan Active",
+        description: `Passkey generated! You have ${interviewsRemaining - 1} interviews remaining this month.`,
+      });
+    } else {
+      // Show payment popup for non-Genz users or Genz users who've used all interviews
+      setShowPaymentPopup(true);
+    }
   };
 
   // Handle coupon code application
@@ -335,19 +416,66 @@ const CopilotSection = () => {
       // Generate a random 6-digit passkey
       const newPasskey = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // In a real application, we would save this to the database
-      // For now, we'll just simulate a successful passkey generation
-      setTimeout(() => {
-        setGeneratedPasskey(newPasskey);
-        // Store the passkey in localStorage so it can be accessed in the settings
-        localStorage.setItem("generatedPasskey", newPasskey);
-        setIsLoading(false);
+      // Get current user
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      
+      // If user is on Genz plan, update their interview usage
+      if (isGenzPlan && interviewsRemaining > 0) {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        const userData = userDoc.data();
         
-        toast({
-          title: "Passkey Generated",
-          description: "Your interview is scheduled successfully.",
+        // Get current month and year
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        const monthKey = `${currentYear}-${currentMonth}`;
+        
+        // Update interviews used count
+        const currentInterviewsUsed = userData?.interviews_used?.[monthKey] || 0;
+        const newInterviewsUsed = currentInterviewsUsed + 1;
+        
+        // Update Firestore document
+        await updateDoc(userDocRef, {
+          [`interviews_used.${monthKey}`]: newInterviewsUsed
         });
-      }, 1000);
+        
+        // Update local state
+        setInterviewsUsed(newInterviewsUsed);
+        setInterviewsRemaining(Math.max(0, 5 - newInterviewsUsed));
+      }
+      
+      // Save passkey and interview details to database
+      if (user) {
+        const interviewData = {
+          passkey: newPasskey,
+          company: company,
+          job_role: jobRole,
+          interview_date: date ? format(date, "yyyy-MM-dd") : "",
+          interview_time: time,
+          user_id: user.uid,
+          created_at: Timestamp.now(),
+          is_used: false
+        };
+        
+        // Add to interviews collection
+        await addDoc(collection(db, "interviews"), interviewData);
+      }
+      
+      // Update UI
+      setGeneratedPasskey(newPasskey);
+      // Store the passkey in localStorage so it can be accessed in the settings
+      localStorage.setItem("generatedPasskey", newPasskey);
+      setIsLoading(false);
+      
+      toast({
+        title: "Passkey Generated",
+        description: isGenzPlan 
+          ? `Your interview is scheduled successfully. You have ${interviewsRemaining > 0 ? interviewsRemaining - 1 : 0} interviews remaining this month.`
+          : "Your interview is scheduled successfully.",
+      });
     } catch (error) {
       console.error("Generate passkey error:", error);
       setIsLoading(false);
@@ -411,9 +539,18 @@ const CopilotSection = () => {
             <div className="space-y-4">
               <div className="bg-muted p-4 rounded-md">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Interview Passkey</span>
+                  <span className="text-sm font-medium">
+                    {isGenzPlan 
+                      ? "Interview Passkey (Additional)" 
+                      : "Interview Passkey"}
+                  </span>
                   <span className="font-semibold">₹299</span>
                 </div>
+                {isGenzPlan && interviewsRemaining === 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    You've used all 5 interviews included in your Genz plan this month
+                  </div>
+                )}
                 {couponApplied && (
                   <div className="flex justify-between items-center text-sm mt-2">
                     <span className="text-muted-foreground">Discount ({discountPercentage}%)</span>
@@ -486,6 +623,13 @@ const CopilotSection = () => {
             <p className="text-muted-foreground max-w-md mx-auto">
               Generate a passkey to access our AI-powered interview assistant through our browser extension. Get real-time answers during your actual interviews.
             </p>
+            
+            {isGenzPlan && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-medium">
+                <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                Genz Plan: {interviewsRemaining} of 5 interviews remaining this month
+              </div>
+            )}
           </motion.div>
           
           <Button 
@@ -501,7 +645,11 @@ const CopilotSection = () => {
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               </svg>
-              <span>Generate New Passkey</span>
+              <span>
+                {isGenzPlan 
+                  ? `Generate New Passkey (${interviewsRemaining} remaining)` 
+                  : "Generate New Passkey"}
+              </span>
             </motion.div>
           </Button>
           
@@ -574,9 +722,14 @@ const CopilotSection = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="text-xl font-semibold"
+              className="text-xl font-semibold flex items-center gap-2"
             >
               Generate New Passkey
+              {isGenzPlan && (
+                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                  {interviewsRemaining} remaining
+                </span>
+              )}
             </motion.h2>
             <div className="w-[72px]"></div> {/* Spacer for alignment */}
           </div>
