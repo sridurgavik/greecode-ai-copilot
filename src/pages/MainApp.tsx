@@ -154,7 +154,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
               >
                 {isFirstVisit 
                   ? "Thanks for verifying your email. Let's get started!" 
-                  : "Your AI coding assistant is ready to help you."}
+                  : "Your Greecode Assistant is Ready to help you."}
               </motion.p>
             </motion.div>
           </motion.div>
