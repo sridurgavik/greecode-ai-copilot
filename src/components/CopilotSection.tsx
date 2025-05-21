@@ -124,10 +124,11 @@ const CopilotSection = () => {
     const paymentStatus = queryParams.get('payment_status');
     const razorpayPaymentId = queryParams.get('razorpay_payment_id');
     const paymentId = queryParams.get('payment_id');
+    const orderId = queryParams.get('order_id');
     
-    // Handle Razorpay payment success
-    if ((paymentStatus === 'success' && razorpayPaymentId) || 
-        (razorpayPaymentId && !paymentStatus)) { // Handle both formats of success URL
+    // Handle Razorpay payment success - check for all possible success indicators
+    if ((paymentStatus === 'success' && (razorpayPaymentId || paymentId || orderId)) || 
+        ((razorpayPaymentId || paymentId || orderId) && !paymentStatus)) { 
       // Close payment popup if open
       setShowPaymentPopup(false);
       
@@ -137,7 +138,7 @@ const CopilotSection = () => {
       // Show success toast
       toast({
         title: "Payment Successful",
-        description: `Payment completed successfully. Reference ID: ${razorpayPaymentId}`,
+        description: `Payment completed successfully. ${razorpayPaymentId ? `Reference ID: ${razorpayPaymentId}` : ''}`,
       });
       
       // Generate the passkey
@@ -145,6 +146,20 @@ const CopilotSection = () => {
       
       // Clean up the URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Close any payment windows that might be open
+      const paymentWindows = window.opener ? [window.opener] : [];
+      paymentWindows.forEach(win => {
+        if (win && !win.closed) {
+          try {
+            // Try to close the window
+            win.close();
+          } catch (e) {
+            // Ignore errors if we can't close it
+            console.log('Could not close payment window');
+          }
+        }
+      });
     }
     
     // Handle Razorpay payment failure
@@ -774,54 +789,126 @@ const CopilotSection = () => {
                     
                     setPaymentProcessing(true);
                     
-                    // For SriDurga coupon (₹1), use direct Razorpay checkout
+                    // For SriDurga coupon (₹1), use the custom Razorpay button
                     if (discountPercentage === 99.67) {
-                      // Create a simple form with the Razorpay button
-                      const tempForm = document.createElement('div');
-                      tempForm.style.position = 'fixed';
-                      tempForm.style.top = '-1000px';
-                      tempForm.style.left = '-1000px';
-                      tempForm.innerHTML = `<form><script src="https://checkout.razorpay.com/v1/payment-button.js" data-payment_button_id="pl_QXZsxLHhndMZPh" async></script></form>`;
-                      document.body.appendChild(tempForm);
+                      // Open the custom Razorpay payment page in a new window
+                      const paymentWindow = window.open('', '_blank');
                       
-                      // Wait for the script to load and create the button
-                      const waitForButton = setInterval(() => {
-                        const button = tempForm.querySelector('button');
-                        if (button) {
-                          clearInterval(waitForButton);
-                          // Click the button to open Razorpay checkout
-                          button.click();
-                          
-                          // Show toast notification
-                          toast({
-                            title: "Payment Initiated",
-                            description: "Complete the payment to generate your passkey.",
-                          });
-                          
-                          // Reset processing state
-                          setTimeout(() => {
-                            setPaymentProcessing(false);
-                          }, 2000);
-                        }
-                      }, 100);
+                      if (paymentWindow) {
+                        // Get the current origin for the redirect URL
+                        const currentOrigin = window.location.origin;
+                        const redirectUrl = `${currentOrigin}/?payment_status=success&source=sridurga`;
+                        
+                        // Create the payment page content with the custom Razorpay button
+                        const paymentPageContent = `
+                          <!DOCTYPE html>
+                          <html>
+                          <head>
+                            <title>Complete Payment - ₹1</title>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <style>
+                              body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                height: 100vh;
+                                margin: 0;
+                                background-color: #f9fafb;
+                              }
+                              .payment-container {
+                                background-color: white;
+                                border-radius: 8px;
+                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                                padding: 24px;
+                                width: 100%;
+                                max-width: 400px;
+                                text-align: center;
+                              }
+                              h2 {
+                                margin-top: 0;
+                                color: #111827;
+                              }
+                              p {
+                                color: #6b7280;
+                                margin-bottom: 24px;
+                              }
+                              .razorpay-button {
+                                margin-top: 16px;
+                              }
+                              .price-display {
+                                font-size: 24px;
+                                font-weight: bold;
+                                color: #111827;
+                                margin: 16px 0;
+                              }
+                              .original-price {
+                                text-decoration: line-through;
+                                color: #9ca3af;
+                                margin-right: 8px;
+                              }
+                              .discount-badge {
+                                background-color: #dcfce7;
+                                color: #166534;
+                                font-size: 12px;
+                                padding: 4px 8px;
+                                border-radius: 9999px;
+                                margin-left: 8px;
+                                font-weight: 500;
+                              }
+                            </style>
+                            <script>
+                              // Listen for messages from the payment iframe
+                              window.addEventListener('message', function(e) {
+                                // Check if it's a payment success message
+                                if (e.data && e.data.razorpay_payment_id) {
+                                  // Redirect to the main app with success parameters
+                                  window.opener.location.href = '${redirectUrl}&razorpay_payment_id=' + e.data.razorpay_payment_id;
+                                  // Close this window
+                                  setTimeout(() => window.close(), 1000);
+                                }
+                              });
+                            </script>
+                          </head>
+                          <body>
+                            <div class="payment-container">
+                              <h2>Complete Your Payment</h2>
+                              <p>You're just one step away from getting your interview passkey</p>
+                              
+                              <div class="price-display">
+                                <span class="original-price">₹299</span>
+                                ₹1
+                                <span class="discount-badge">99.67% OFF</span>
+                              </div>
+                              
+                              <div class="razorpay-button">
+                                <form><script src="https://checkout.razorpay.com/v1/payment-button.js" data-payment_button_id="pl_QXbDxJ0azbF0a3" async> </script></form>
+                              </div>
+                            </div>
+                          </body>
+                          </html>
+                        `;
+                        
+                        // Write the content to the new window
+                        paymentWindow.document.open();
+                        paymentWindow.document.write(paymentPageContent);
+                        paymentWindow.document.close();
+                      } else {
+                        // If popup was blocked, show a message to the user
+                        toast({
+                          title: "Popup Blocked",
+                          description: "Please allow popups for this site to complete the payment.",
+                          variant: "destructive",
+                        });
+                      }
                       
-                      // Fallback if button doesn't appear within 5 seconds
-                      setTimeout(() => {
-                        if (!tempForm.querySelector('button')) {
-                          clearInterval(waitForButton);
-                          document.body.removeChild(tempForm);
-                          
-                          // Fallback to direct link
-                          window.open("https://rzp.io/rzp/zfhkX5h5", "_blank");
-                          
-                          toast({
-                            title: "Payment Initiated",
-                            description: "Complete the payment in the new window to generate your passkey.",
-                          });
-                          
-                          setPaymentProcessing(false);
-                        }
-                      }, 5000);
+                      // Show toast notification
+                      toast({
+                        title: "Payment Initiated",
+                        description: "Complete the payment in the new window to generate your passkey.",
+                      });
+                      
+                      setPaymentProcessing(false);
                     } else {
                       // For other coupons, use the existing direct link approach
                       window.open(paymentLink, "_blank");
