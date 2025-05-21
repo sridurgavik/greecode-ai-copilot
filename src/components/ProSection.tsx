@@ -10,7 +10,7 @@ import GroqChat from "./GroqChat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { auth, db } from "@/integrations/firebase/client";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { supabase } from "@/integrations/supabase/client";
 
 // Helper function to safely interact with Chrome API
@@ -67,6 +67,12 @@ const ProSection = () => {
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
   const [showActivePasskeys, setShowActivePasskeys] = useState<boolean>(false);
   const [showUsedPasskeys, setShowUsedPasskeys] = useState<boolean>(false);
+  const [isGithubVerified, setIsGithubVerified] = useState<boolean>(false);
+  const [isLinkedinVerified, setIsLinkedinVerified] = useState<boolean>(false);
+  const [isVerifyingGithub, setIsVerifyingGithub] = useState<boolean>(false);
+  const [isVerifyingLinkedin, setIsVerifyingLinkedin] = useState<boolean>(false);
+  const [isEditingGithub, setIsEditingGithub] = useState<boolean>(false);
+  const [isEditingLinkedin, setIsEditingLinkedin] = useState<boolean>(false);
   const { toast } = useToast();
   const { isExtensionEnvironment, sendTabMessage } = useChromeAPI();
   
@@ -85,6 +91,8 @@ const ProSection = () => {
             const userData = userDoc.data();
             setGithubUrl(userData.github_url || "");
             setLinkedinUrl(userData.linkedin_url || "");
+            setIsGithubVerified(userData.is_github_verified || false);
+            setIsLinkedinVerified(userData.is_linkedin_verified || false);
           }
           
           // Load previous interviews
@@ -102,7 +110,7 @@ const ProSection = () => {
         console.error("Error loading profile:", error);
         toast({
           title: "Error",
-          description: "Failed to load profile data.",
+          description: "Failed to load profile data. Please refresh the page.",
           variant: "destructive",
         });
       } finally {
@@ -111,7 +119,7 @@ const ProSection = () => {
     };
     
     loadUserProfile();
-  }, []);
+  }, [toast]);
   
   // Handle save profile
   const handleSaveProfile = async () => {
@@ -124,19 +132,26 @@ const ProSection = () => {
         await updateDoc(userDocRef, {
           github_url: githubUrl,
           linkedin_url: linkedinUrl,
-          updated_at: new Date().toISOString()
+          // Reset verification status if URLs are edited
+          is_github_verified: isEditingGithub ? false : isGithubVerified,
+          is_linkedin_verified: isEditingLinkedin ? false : isLinkedinVerified,
+          updated_at: new Date().toISOString(),
         });
         
+        // Reset editing state
+        setIsEditingGithub(false);
+        setIsEditingLinkedin(false);
+        
         toast({
-          title: "Profile Saved",
-          description: "Your profile links have been updated successfully.",
+          title: "Profile updated",
+          description: "Your profile has been updated successfully.",
         });
       }
     } catch (error) {
-      console.error("Save profile error:", error);
+      console.error("Error updating profile:", error);
       toast({
         title: "Error",
-        description: "Failed to save profile. Please try again.",
+        description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -163,21 +178,187 @@ const ProSection = () => {
   };
   
   // Handle copy text button
-  const handleCopyText = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied",
-        description: "Text copied to clipboard.",
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast({
+          title: "Copied",
+          description: "Text copied to clipboard.",
+        });
+      })
+      .catch((error) => {
+        console.error("Error copying text:", error);
+        toast({
+          title: "Error",
+          description: "Failed to copy text. Please try again.",
+          variant: "destructive",
+        });
       });
-    } catch (error) {
-      console.error("Copy text error:", error);
+  };
+  
+  // Verify GitHub profile
+  const verifyGithubProfile = async () => {
+    if (!githubUrl) {
       toast({
         title: "Error",
-        description: "Failed to copy text. Please try again.",
+        description: "Please enter a GitHub URL first.",
         variant: "destructive",
       });
+      return;
     }
+    
+    try {
+      setIsVerifyingGithub(true);
+      const user = auth.currentUser;
+      
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      
+      // Extract username from GitHub URL
+      const githubUsername = extractGithubUsername(githubUrl);
+      if (!githubUsername) {
+        throw new Error("Invalid GitHub URL format");
+      }
+      
+      // Check if URL is already used by another account
+      const profilesRef = collection(db, "profiles");
+      const q = query(
+        profilesRef, 
+        where("github_url", "==", githubUrl),
+        where("is_github_verified", "==", true)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const existingProfiles = querySnapshot.docs.filter(doc => doc.id !== user.uid);
+      
+      if (existingProfiles.length > 0) {
+        throw new Error("This GitHub profile is already linked to another account");
+      }
+      
+      // Verify that the profile exists (could use GitHub API in a real implementation)
+      // For demo purposes, we'll just check the URL format
+      const isValidUrl = /^https:\/\/github\.com\/[\w-]+\/?$/.test(githubUrl);
+      if (!isValidUrl) {
+        throw new Error("Invalid GitHub URL format");
+      }
+      
+      // Update verification status in Firestore
+      const userDocRef = doc(db, "profiles", user.uid);
+      await updateDoc(userDocRef, {
+        is_github_verified: true,
+        github_verified_at: new Date().toISOString(),
+      });
+      
+      setIsGithubVerified(true);
+      
+      toast({
+        title: "GitHub Verified",
+        description: "Your GitHub profile has been verified successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error verifying GitHub profile:", error);
+      toast({
+        title: "Verification Failed",
+        description: error.message || "Failed to verify GitHub profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingGithub(false);
+    }
+  };
+  
+  // Verify LinkedIn profile
+  const verifyLinkedinProfile = async () => {
+    if (!linkedinUrl) {
+      toast({
+        title: "Error",
+        description: "Please enter a LinkedIn URL first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsVerifyingLinkedin(true);
+      const user = auth.currentUser;
+      
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      
+      // Extract username/ID from LinkedIn URL
+      const linkedinId = extractLinkedinId(linkedinUrl);
+      if (!linkedinId) {
+        throw new Error("Invalid LinkedIn URL format");
+      }
+      
+      // Check if URL is already used by another account
+      const profilesRef = collection(db, "profiles");
+      const q = query(
+        profilesRef, 
+        where("linkedin_url", "==", linkedinUrl),
+        where("is_linkedin_verified", "==", true)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const existingProfiles = querySnapshot.docs.filter(doc => doc.id !== user.uid);
+      
+      if (existingProfiles.length > 0) {
+        throw new Error("This LinkedIn profile is already linked to another account");
+      }
+      
+      // Verify that the profile exists (could use LinkedIn API in a real implementation)
+      // For demo purposes, we'll just check the URL format
+      const isValidUrl = /^https:\/\/(?:www\.)?linkedin\.com\/in\/[\w-]+\/?$/.test(linkedinUrl);
+      if (!isValidUrl) {
+        throw new Error("Invalid LinkedIn URL format");
+      }
+      
+      // Update verification status in Firestore
+      const userDocRef = doc(db, "profiles", user.uid);
+      await updateDoc(userDocRef, {
+        is_linkedin_verified: true,
+        linkedin_verified_at: new Date().toISOString(),
+      });
+      
+      setIsLinkedinVerified(true);
+      
+      toast({
+        title: "LinkedIn Verified",
+        description: "Your LinkedIn profile has been verified successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error verifying LinkedIn profile:", error);
+      toast({
+        title: "Verification Failed",
+        description: error.message || "Failed to verify LinkedIn profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingLinkedin(false);
+    }
+  };
+  
+  // Helper functions to extract usernames
+  const extractGithubUsername = (url: string): string | null => {
+    const match = url.match(/github\.com\/([\w-]+)/);
+    return match ? match[1] : null;
+  };
+  
+  const extractLinkedinId = (url: string): string | null => {
+    const match = url.match(/linkedin\.com\/in\/([\w-]+)/);
+    return match ? match[1] : null;
+  };
+  
+  // Toggle edit mode for GitHub
+  const toggleEditGithub = () => {
+    setIsEditingGithub(!isEditingGithub);
+  };
+  
+  // Toggle edit mode for LinkedIn
+  const toggleEditLinkedin = () => {
+    setIsEditingLinkedin(!isEditingLinkedin);
   };
 
   return (
@@ -205,47 +386,125 @@ const ProSection = () => {
                 <>
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium">Profile Links</h3>
-                    
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Github className="h-5 w-5 text-muted-foreground" />
-                        <Input 
-                          placeholder="Your GitHub URL"
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Github className="mr-2 h-4 w-4" />
+                            <span className="text-sm font-medium">GitHub Profile</span>
+                          </div>
+                          {isGithubVerified && !isEditingGithub ? (
+                            <div className="flex items-center">
+                              <span className="text-xs mr-2 px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                                Verified
+                              </span>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-8 px-2 text-xs"
+                                onClick={toggleEditGithub}
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              onClick={verifyGithubProfile}
+                              disabled={!githubUrl || isVerifyingGithub}
+                            >
+                              {isVerifyingGithub ? (
+                                <>
+                                  <svg className="animate-spin -ml-1 mr-2 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Verifying
+                                </>
+                              ) : (
+                                "Verify"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          placeholder="https://github.com/username"
                           value={githubUrl}
                           onChange={(e) => setGithubUrl(e.target.value)}
-                          className="flex-1"
+                          disabled={isGithubVerified && !isEditingGithub}
                         />
-                        {githubUrl && <Check className="h-4 w-4 text-green-500" />}
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Linkedin className="h-5 w-5 text-muted-foreground" />
-                        <Input 
-                          placeholder="Your LinkedIn URL"
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Linkedin className="mr-2 h-4 w-4" />
+                            <span className="text-sm font-medium">LinkedIn Profile</span>
+                          </div>
+                          {isLinkedinVerified && !isEditingLinkedin ? (
+                            <div className="flex items-center">
+                              <span className="text-xs mr-2 px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                                Verified
+                              </span>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-8 px-2 text-xs"
+                                onClick={toggleEditLinkedin}
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              onClick={verifyLinkedinProfile}
+                              disabled={!linkedinUrl || isVerifyingLinkedin}
+                            >
+                              {isVerifyingLinkedin ? (
+                                <>
+                                  <svg className="animate-spin -ml-1 mr-2 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Verifying
+                                </>
+                              ) : (
+                                "Verify"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          placeholder="https://linkedin.com/in/username"
                           value={linkedinUrl}
                           onChange={(e) => setLinkedinUrl(e.target.value)}
-                          className="flex-1"
+                          disabled={isLinkedinVerified && !isEditingLinkedin}
                         />
-                        {linkedinUrl && <Check className="h-4 w-4 text-green-500" />}
                       </div>
+                      
+                      <Button 
+                        onClick={handleSaveProfile} 
+                        disabled={isSaving}
+                        className="w-full mt-2"
+                      >
+                        {isSaving ? (
+                          <>
+                            <span className="mr-2">Saving...</span>
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          </>
+                        ) : (
+                          "Save Profile"
+                        )}
+                      </Button>
                     </div>
-                    
-                    <Button 
-                      onClick={handleSaveProfile} 
-                      disabled={isSaving}
-                      className="w-full mt-4 bg-background text-primary border border-primary hover:bg-primary hover:text-background transition-colors"
-                    >
-                      {isSaving ? (
-                        <>
-                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></div>
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          Save Profile
-                        </>
-                      )}
-                    </Button>
                   </div>
                   
                   <div className="space-y-4 pt-6 border-t mt-6">

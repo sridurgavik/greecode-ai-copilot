@@ -165,36 +165,37 @@ const GroqChat = () => {
   };
 
   return (
-    <Card className="flex flex-col h-[500px]">
-      <CardHeader className="pb-3">
+    <Card className="flex flex-col h-[500px] overflow-hidden">
+      <CardHeader className="pb-3 shrink-0">
         <CardTitle className="flex items-center">
           <MessageCircle className="mr-2 h-5 w-5" />
           GreecodePro.ai Assistant
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col pt-0">
-        <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+      <CardContent className="flex-1 flex flex-col pt-0 overflow-hidden">
+        <div className="flex-1 overflow-y-auto pr-1 mb-3 space-y-4 scrollbar-thin">
           {messages.map((message, index) => (
             <div
               key={index}
               className={`flex ${
                 message.role === "user" ? "justify-end" : "justify-start"
-              }`}
+              } mb-2`}
             >
               <div
-                className={`max-w-[80%] p-3 rounded-lg ${
+                className={`max-w-[85%] p-3 rounded-lg shadow-sm ${
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted"
                 }`}
               >
                 <div className="flex justify-between items-start gap-2">
-                  <div className="break-words">{message.content}</div>
+                  <div className="break-words whitespace-pre-wrap">{message.content}</div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 opacity-50 hover:opacity-100 shrink-0"
+                    className="h-5 w-5 opacity-50 hover:opacity-100 shrink-0 -mr-1 -mt-1"
                     onClick={() => handleCopyMessage(message.content)}
+                    aria-label="Copy message"
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
@@ -212,8 +213,8 @@ const GroqChat = () => {
             </div>
           ))}
           {isTyping && (
-            <div className="flex justify-start">
-              <div className="max-w-[80%] p-3 rounded-lg bg-muted">
+            <div className="flex justify-start mb-2">
+              <div className="max-w-[85%] p-3 rounded-lg bg-muted shadow-sm">
                 <div className="flex space-x-1">
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-150"></div>
@@ -222,21 +223,24 @@ const GroqChat = () => {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-1" />
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 pt-2 border-t mt-auto">
           <Input
             placeholder="Type your message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 focus-visible:ring-1"
+            aria-label="Message input"
           />
           <Button
             onClick={handleSendMessage}
             disabled={isLoading || !input.trim()}
             size="icon"
+            className="shrink-0"
+            aria-label="Send message"
           >
             {isLoading ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground" />
