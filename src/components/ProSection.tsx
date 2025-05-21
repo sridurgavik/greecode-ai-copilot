@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, FileText, Copy, BookOpen, Search, Github, Linkedin, Upload, Check } from "lucide-react";
+import { MessageSquare, FileText, Copy, BookOpen, Search, Github, Linkedin, Upload, Check, X, ExternalLink } from "lucide-react";
 import GroqChat from "./GroqChat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { auth, db } from "@/integrations/firebase/client";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +65,8 @@ const ProSection = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [previousInterviews, setPreviousInterviews] = useState<any[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
+  const [showActivePasskeys, setShowActivePasskeys] = useState<boolean>(false);
+  const [showUsedPasskeys, setShowUsedPasskeys] = useState<boolean>(false);
   const { toast } = useToast();
   const { isExtensionEnvironment, sendTabMessage } = useChromeAPI();
   
@@ -283,14 +286,26 @@ const ProSection = () => {
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4 text-center">
-                        <div className="rounded-md bg-background p-3">
-                          <p className="text-xs text-muted-foreground">Active Passkeys</p>
+                        <div 
+                          className="rounded-md bg-background p-3 cursor-pointer hover:border-primary hover:border transition-all duration-200"
+                          onClick={() => setShowActivePasskeys(true)}
+                        >
+                          <p className="text-xs text-muted-foreground flex items-center justify-center">
+                            Active Passkeys
+                            <ExternalLink className="ml-1 h-3 w-3" />
+                          </p>
                           <p className="text-lg font-semibold">
                             {previousInterviews.filter(i => !i.is_used).length}
                           </p>
                         </div>
-                        <div className="rounded-md bg-background p-3">
-                          <p className="text-xs text-muted-foreground">Used Passkeys</p>
+                        <div 
+                          className="rounded-md bg-background p-3 cursor-pointer hover:border-primary hover:border transition-all duration-200"
+                          onClick={() => setShowUsedPasskeys(true)}
+                        >
+                          <p className="text-xs text-muted-foreground flex items-center justify-center">
+                            Used Passkeys
+                            <ExternalLink className="ml-1 h-3 w-3" />
+                          </p>
                           <p className="text-lg font-semibold">
                             {previousInterviews.filter(i => i.is_used).length}
                           </p>
@@ -322,6 +337,156 @@ const ProSection = () => {
                   <p className="text-xs text-muted-foreground mt-2">
                     Make sure you're on the webpage you want to analyze
                   </p>
+                  
+                  {/* Active Passkeys Dialog */}
+                  <Dialog open={showActivePasskeys} onOpenChange={setShowActivePasskeys}>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Active Passkeys</DialogTitle>
+                        <DialogDescription>
+                          Passkeys that are still available for use in interviews
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4 max-h-[60vh] overflow-y-auto py-4">
+                        {previousInterviews.filter(i => !i.is_used).length > 0 ? (
+                          previousInterviews
+                            .filter(i => !i.is_used)
+                            .map((passkey) => (
+                              <div key={passkey.id} className="rounded-md border p-4 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium text-base">{passkey.company}</span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                                      Active
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => handleCopyText(passkey.passkey)}
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Role</p>
+                                    <p>{passkey.job_role || "N/A"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Passkey</p>
+                                    <p className="font-mono font-medium">{passkey.passkey}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Created</p>
+                                    <p>{new Date(passkey.created_at).toLocaleDateString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Expires</p>
+                                    <p>{passkey.expires_at ? new Date(passkey.expires_at).toLocaleDateString() : "N/A"}</p>
+                                  </div>
+                                </div>
+                                
+                                {passkey.job_description && (
+                                  <div className="mt-2">
+                                    <p className="text-xs text-muted-foreground">Job Description</p>
+                                    <p className="text-sm mt-1 line-clamp-2">{passkey.job_description}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                        ) : (
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground">No active passkeys found</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowActivePasskeys(false)}>
+                          Close
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  {/* Used Passkeys Dialog */}
+                  <Dialog open={showUsedPasskeys} onOpenChange={setShowUsedPasskeys}>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Used Passkeys</DialogTitle>
+                        <DialogDescription>
+                          Passkeys that have been used in previous interviews
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4 max-h-[60vh] overflow-y-auto py-4">
+                        {previousInterviews.filter(i => i.is_used).length > 0 ? (
+                          previousInterviews
+                            .filter(i => i.is_used)
+                            .map((passkey) => (
+                              <div key={passkey.id} className="rounded-md border p-4 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium text-base">{passkey.company}</span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded-full">
+                                      Used
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => handleCopyText(passkey.passkey)}
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Role</p>
+                                    <p>{passkey.job_role || "N/A"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Passkey</p>
+                                    <p className="font-mono font-medium">{passkey.passkey}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Created</p>
+                                    <p>{new Date(passkey.created_at).toLocaleDateString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Used On</p>
+                                    <p>{passkey.used_at ? new Date(passkey.used_at).toLocaleDateString() : "N/A"}</p>
+                                  </div>
+                                </div>
+                                
+                                {passkey.job_description && (
+                                  <div className="mt-2">
+                                    <p className="text-xs text-muted-foreground">Job Description</p>
+                                    <p className="text-sm mt-1 line-clamp-2">{passkey.job_description}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                        ) : (
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground">No used passkeys found</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowUsedPasskeys(false)}>
+                          Close
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </>
               )}
             </CardContent>
