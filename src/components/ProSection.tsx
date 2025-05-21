@@ -227,27 +227,25 @@ const ProSection = () => {
                       </div>
                     </div>
                     
-                    <div className="flex justify-end">
-                      <Button 
-                        onClick={handleSaveProfile} 
-                        disabled={isSaving}
-                        className="bg-primary text-white"
-                      >
-                        {isSaving ? (
-                          <>
-                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            Save Profile
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    <Button 
+                      onClick={handleSaveProfile} 
+                      disabled={isSaving}
+                      className="w-full mt-4 bg-background text-primary border border-primary hover:bg-primary hover:text-background transition-colors"
+                    >
+                      {isSaving ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          Save Profile
+                        </>
+                      )}
+                    </Button>
                   </div>
                   
-                  <div className="space-y-4 pt-4">
+                  <div className="space-y-4 pt-6 border-t mt-6">
                     <h3 className="text-sm font-medium">Previous Interviews</h3>
                     
                     {previousInterviews.length > 0 ? (
@@ -275,7 +273,33 @@ const ProSection = () => {
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 pt-4">
+                  <div className="space-y-4 pt-6 border-t mt-6">
+                    <h3 className="text-sm font-medium">Passkeys History</h3>
+                    
+                    <div className="bg-muted/30 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-sm font-medium">Total Passkeys Generated</span>
+                        <span className="text-xl font-bold text-primary">{previousInterviews.length}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div className="rounded-md bg-background p-3">
+                          <p className="text-xs text-muted-foreground">Active Passkeys</p>
+                          <p className="text-lg font-semibold">
+                            {previousInterviews.filter(i => !i.is_used).length}
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-background p-3">
+                          <p className="text-xs text-muted-foreground">Used Passkeys</p>
+                          <p className="text-lg font-semibold">
+                            {previousInterviews.filter(i => i.is_used).length}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 pt-6 border-t mt-6">
                     <Button 
                       onClick={handleUploadResume} 
                       variant="outline"
