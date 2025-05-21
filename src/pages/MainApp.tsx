@@ -446,16 +446,16 @@ const MainApp = ({ onLogout }: MainAppProps) => {
               Select the plan that best fits your interview preparation needs.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-2 gap-4 py-4">
             {/* Current Plan */}
-            <div className="rounded-lg border p-4 relative">
+            <div className="rounded-lg border p-4 relative h-full flex flex-col">
               <div className="absolute top-3 right-3 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
                 Current Plan
               </div>
               <h3 className="font-medium text-lg mb-2">Pay Per Session</h3>
               <p className="text-sm text-muted-foreground mb-4">Perfect for occasional interview preparation</p>
               
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2 mb-4 flex-grow">
                 <div className="flex items-start">
                   <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
@@ -476,25 +476,27 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 </div>
               </div>
               
-              <div className="flex items-baseline mb-4">
-                <span className="text-3xl font-bold">₹99</span>
-                <span className="text-sm text-muted-foreground ml-1">/ session</span>
+              <div className="mt-auto">
+                <div className="flex items-baseline mb-4">
+                  <span className="text-3xl font-bold">₹299</span>
+                  <span className="text-sm text-muted-foreground ml-1">/ session</span>
+                </div>
+                
+                <Button variant="outline" className="w-full" disabled>
+                  Current Plan
+                </Button>
               </div>
-              
-              <Button variant="outline" className="w-full" disabled>
-                Current Plan
-              </Button>
             </div>
             
             {/* Genz Plan */}
-            <div className="rounded-lg border border-primary p-4 relative bg-primary/5">
+            <div className="rounded-lg border border-primary p-4 relative h-full flex flex-col bg-primary/5">
               <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
                 Recommended
               </div>
               <h3 className="font-medium text-lg mb-2">Genz</h3>
               <p className="text-sm text-muted-foreground mb-4">For serious interview preparation</p>
               
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2 mb-4 flex-grow">
                 <div className="flex items-start">
                   <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
@@ -527,14 +529,16 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 </div>
               </div>
               
-              <div className="flex items-baseline mb-4">
-                <span className="text-3xl font-bold">₹599</span>
-                <span className="text-sm text-muted-foreground ml-1">/ month</span>
+              <div className="mt-auto">
+                <div className="flex items-baseline mb-4">
+                  <span className="text-3xl font-bold">₹599</span>
+                  <span className="text-sm text-muted-foreground ml-1">/ month</span>
+                </div>
+                
+                <Button variant="default" className="w-full">
+                  Upgrade Now
+                </Button>
               </div>
-              
-              <Button variant="default" className="w-full">
-                Upgrade Now
-              </Button>
             </div>
           </div>
         </DialogContent>
