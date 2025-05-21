@@ -119,34 +119,44 @@ const CopilotSection = () => {
   // Check for payment status changes from URL parameters
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
-    const paymentStatus = queryParams.get("payment_status");
-    const paymentId = queryParams.get("payment_id");
     
-    if (paymentStatus === "success" && paymentId) {
+    // Check for payment success parameter from Razorpay
+    const paymentStatus = queryParams.get('payment_status');
+    const razorpayPaymentId = queryParams.get('razorpay_payment_id');
+    const paymentId = queryParams.get('payment_id');
+    
+    // Handle Razorpay payment success
+    if (paymentStatus === 'success' && razorpayPaymentId) {
+      // Payment was successful, generate the passkey
       setPaymentComplete(true);
+      
+      // Show success toast
       toast({
         title: "Payment Successful",
-        description: "Your payment was processed successfully.",
+        description: `Payment completed successfully. Reference ID: ${razorpayPaymentId}`,
       });
       
-      // Generate passkey automatically after successful payment
-      if (showPasskeyForm) {
-        handleGeneratePasskey();
-      }
+      // Generate the passkey
+      handleGeneratePasskey();
       
-      // Clear URL params without refreshing
+      // Clean up the URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (paymentStatus === "failure") {
-      setPaymentError("Payment failed. Please try again.");
+    }
+    
+    // Handle Razorpay payment failure
+    if (paymentStatus === 'failure') {
+      // Show failure toast
       toast({
         title: "Payment Failed",
-        description: "Your payment could not be processed. Please try again.",
+        description: "There was an issue processing your payment. Please try again.",
         variant: "destructive",
       });
       
-      // Clear URL params without refreshing
+      // Clean up the URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+    
+    // Handle other payment status parameters if needed
   }, [toast]);
 
   // Initialize payment button when form is shown
@@ -163,7 +173,15 @@ const CopilotSection = () => {
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
       script.async = true;
-      script.setAttribute('data-payment_button_id', 'pl_QOEa41foHVbd1v');
+      
+      // Set the appropriate payment button ID based on coupon status
+      if (couponApplied && discountPercentage === 84) {
+        // Discounted price (₹49)
+        script.setAttribute('data-payment_button_id', 'pl_i6i8F9o');
+      } else {
+        // Regular price (₹299)
+        script.setAttribute('data-payment_button_id', 'pl_rt6WXZL');
+      }
       
       // Add script to form
       form.appendChild(script);
@@ -171,7 +189,7 @@ const CopilotSection = () => {
       // Add form to container
       razorpayFormRef.current.appendChild(form);
     }
-  }, [showPasskeyForm, paymentComplete]);
+  }, [showPasskeyForm, paymentComplete, couponApplied, discountPercentage]);
 
   // Handle file upload and analysis
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -396,15 +414,48 @@ const CopilotSection = () => {
       return;
     }
     
-    // Simulate payment processing
-    setTimeout(() => {
-      setPaymentComplete(true);
-      setPaymentProcessing(false);
-      setShowPaymentPopup(false);
-      
-      // Generate passkey after payment
-      handleGeneratePasskey();
-    }, 1500);
+    // For actual Razorpay payments, we'll open the payment link in a popup
+    // The payment status will be handled by Razorpay's redirect URLs
+    
+    // Create a window listener for payment completion
+    const handlePaymentMessage = (event: MessageEvent) => {
+      // Check if the message is from our expected origin
+      if (event.data && typeof event.data === 'object') {
+        // Handle payment success
+        if (event.data.status === 'success') {
+          window.removeEventListener('message', handlePaymentMessage);
+          setPaymentComplete(true);
+          setPaymentProcessing(false);
+          setShowPaymentPopup(false);
+          
+          // Generate passkey after successful payment
+          handleGeneratePasskey();
+          
+          toast({
+            title: "Payment Successful",
+            description: "Your payment was processed successfully. Generating your passkey now.",
+          });
+        }
+        
+        // Handle payment failure
+        if (event.data.status === 'failure') {
+          window.removeEventListener('message', handlePaymentMessage);
+          setPaymentProcessing(false);
+          
+          toast({
+            title: "Payment Failed",
+            description: "There was an issue processing your payment. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    // Add the event listener
+    window.addEventListener('message', handlePaymentMessage);
+    
+    // Open the Razorpay payment in the popup
+    // The actual payment will be handled by the Razorpay button that's injected via script
   };
 
   // Handle generate passkey
@@ -581,7 +632,32 @@ const CopilotSection = () => {
               <div className="pt-4">
                 <Button 
                   className="w-full" 
-                  onClick={handleCompletePayment}
+                  onClick={() => {
+                    // If 100% discount, skip payment processing
+                    if (discountPercentage === 100) {
+                      setPaymentComplete(true);
+                      setShowPaymentPopup(false);
+                      handleGeneratePasskey();
+                      return;
+                    }
+                    
+                    // Otherwise, open the appropriate Razorpay payment link
+                    const paymentLink = couponApplied && discountPercentage === 84
+                      ? "https://rzp.io/rzp/i6i8F9o" // ₹49 link
+                      : "https://rzp.io/rzp/rt6WXZL"; // ₹299 link
+                    
+                    // Open the payment link in a new window
+                    window.open(paymentLink, "_blank");
+                    
+                    // Close the payment popup
+                    setShowPaymentPopup(false);
+                    
+                    // Show toast notification
+                    toast({
+                      title: "Payment Initiated",
+                      description: "Complete the payment in the new window to generate your passkey.",
+                    });
+                  }}
                   disabled={paymentProcessing}
                 >
                   {paymentProcessing ? (
