@@ -78,16 +78,24 @@ const ProSection = () => {
   
   // Event listener for setting dashboard tab
   useEffect(() => {
-    const handleSetDashboardTab = (event: CustomEvent) => {
-      if (event.detail?.tab === "dashboard") {
-        setActiveTab("dashboard");
+    // Listen for the startInterviewPractice event
+    const handleStartInterviewPractice = () => {
+      setActiveTab("chat");
+    };
+
+    // Listen for the setProSectionTab event
+    const handleSetProSectionTab = (event: CustomEvent) => {
+      if (event.detail && event.detail.tab) {
+        setActiveTab(event.detail.tab);
       }
     };
-    
-    window.addEventListener("setDashboardTab", handleSetDashboardTab as EventListener);
-    
+
+    window.addEventListener("startInterviewPractice", handleStartInterviewPractice);
+    window.addEventListener("setProSectionTab", handleSetProSectionTab as EventListener);
+
     return () => {
-      window.removeEventListener("setDashboardTab", handleSetDashboardTab as EventListener);
+      window.removeEventListener("startInterviewPractice", handleStartInterviewPractice);
+      window.removeEventListener("setProSectionTab", handleSetProSectionTab as EventListener);
     };
   }, []);
 

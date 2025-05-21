@@ -333,10 +333,16 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 <button 
                   className="flex items-center space-x-3 rounded-lg border bg-card p-4 text-card-foreground shadow-sm hover:bg-accent/50 transition-colors"
                   onClick={() => {
+                    // Set the main tab to Pro section
                     setActiveTab("pro");
-                    // This will trigger the Interview Practice Module
-                    const event = new CustomEvent("startInterviewPractice");
-                    window.dispatchEvent(event);
+                    
+                    // Set the Pro section tab to chat (AI Chat)
+                    // Use a timeout to ensure the Pro section is mounted before trying to access its state
+                    setTimeout(() => {
+                      // Create and dispatch a custom event to set the Pro section tab to chat
+                      const event = new CustomEvent("setProSectionTab", { detail: { tab: "chat" } });
+                      window.dispatchEvent(event);
+                    }, 100);
                   }}
                 >
                   <div className="rounded-full bg-primary/10 p-2">
