@@ -126,7 +126,11 @@ const CopilotSection = () => {
     const paymentId = queryParams.get('payment_id');
     
     // Handle Razorpay payment success
-    if (paymentStatus === 'success' && razorpayPaymentId) {
+    if ((paymentStatus === 'success' && razorpayPaymentId) || 
+        (razorpayPaymentId && !paymentStatus)) { // Handle both formats of success URL
+      // Close payment popup if open
+      setShowPaymentPopup(false);
+      
       // Payment was successful, generate the passkey
       setPaymentComplete(true);
       
@@ -144,7 +148,10 @@ const CopilotSection = () => {
     }
     
     // Handle Razorpay payment failure
-    if (paymentStatus === 'failure') {
+    if (paymentStatus === 'failure' || queryParams.get('error') === '1') {
+      // Close payment popup if open
+      setShowPaymentPopup(false);
+      
       // Show failure toast
       toast({
         title: "Payment Failed",
@@ -382,6 +389,13 @@ const CopilotSection = () => {
         title: "Coupon Applied",
         description: "You got 84% discount with CRACKNOW coupon!",
       });
+    } else if (couponCode.toUpperCase() === "SRIDURGA") {
+      setCouponApplied(true);
+      setDiscountPercentage(99.67);
+      toast({
+        title: "Coupon Applied",
+        description: "You got 99.67% discount with SRIDURGA coupon!",
+      });
     } else if (couponCode.toUpperCase() === "BUNNY") {
       setCouponApplied(true);
       setDiscountPercentage(100);
@@ -473,6 +487,10 @@ const CopilotSection = () => {
         throw new Error("User not authenticated");
       }
       
+      // Set default values for empty fields if using the Bunny coupon
+      const finalJobRole = jobRole || "Not specified";
+      const finalCompany = company || "Not specified";
+      
       // If user is on Genz plan, update their interview usage
       if (isGenzPlan && interviewsRemaining > 0) {
         const userDocRef = doc(db, "users", user.uid);
@@ -502,10 +520,10 @@ const CopilotSection = () => {
       if (user) {
         const interviewData = {
           passkey: newPasskey,
-          company: company,
-          job_role: jobRole,
+          company: finalCompany,
+          job_role: finalJobRole,
           interview_date: date ? format(date, "yyyy-MM-dd") : "",
-          interview_time: time,
+          interview_time: time || "",
           user_id: user.uid,
           created_at: Timestamp.now(),
           is_used: false
@@ -535,6 +553,66 @@ const CopilotSection = () => {
         description: "Failed to generate passkey. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Special function for Bunny coupon (100% discount) to guarantee passkey generation
+  const handleBunnyPasskeyGeneration = async () => {
+    // Set loading state
+    setIsLoading(true);
+    try {
+      // Generate a random 6-digit passkey
+      const newPasskey = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Get current user
+      const user = auth.currentUser;
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "User not authenticated. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Create minimal interview data with failsafe defaults
+      const interviewData = {
+        passkey: newPasskey,
+        company: company || "Free Trial",
+        job_role: jobRole || "General Interview",
+        interview_date: "",
+        interview_time: "",
+        user_id: user.uid,
+        created_at: Timestamp.now(),
+        is_used: false
+      };
+      
+      // Save to Firestore with error handling
+      try {
+        await addDoc(collection(db, "interviews"), interviewData);
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        // Continue anyway - we'll still show the passkey even if DB storage fails
+      }
+      
+      // Update UI
+      setGeneratedPasskey(newPasskey);
+      localStorage.setItem("generatedPasskey", newPasskey);
+      
+      toast({
+        title: "Free Passkey Generated",
+        description: "Your free passkey has been generated successfully!",
+      });
+    } catch (error) {
+      console.error("Bunny passkey generation error:", error);
+      setIsLoading(false); // Reset loading state on error
+      toast({
+        title: "Error",
+        description: "Failed to generate passkey. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false); // Ensure loading state is reset
     }
   };
 
@@ -595,7 +673,37 @@ const CopilotSection = () => {
                       ? "Interview Passkey (Additional)" 
                       : "Interview Passkey"}
                   </span>
-                  <span className="font-semibold">₹299</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">
+                      {couponApplied && (
+                        discountPercentage === 100 ? (
+                          <>
+                            <span className="line-through text-muted-foreground mr-2">₹299</span>
+                            ₹0
+                          </>
+                        ) : 
+                        discountPercentage === 99.67 ? (
+                          <>
+                            <span className="line-through text-muted-foreground mr-2">₹299</span>
+                            ₹1
+                          </>
+                        ) :
+                        discountPercentage === 84 ? (
+                          <>
+                            <span className="line-through text-muted-foreground mr-2">₹299</span>
+                            ₹49
+                          </>
+                        ) : "₹299"
+                      ) || (!couponApplied && "₹299")}
+                    </span>
+                    {couponApplied && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
+                        {discountPercentage === 100 ? "100% OFF" : 
+                         discountPercentage === 99.67 ? "99.67% OFF" : 
+                         "84% OFF"}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {isGenzPlan && interviewsRemaining === 0 && (
                   <div className="text-xs text-muted-foreground mt-1">
@@ -605,14 +713,20 @@ const CopilotSection = () => {
                 {couponApplied && (
                   <div className="flex justify-between items-center text-sm mt-2">
                     <span className="text-muted-foreground">Discount ({discountPercentage}%)</span>
-                    <span className="text-green-600">-₹{discountPercentage === 100 ? 299 : 250}</span>
+                    <span className="text-green-600">
+                      {discountPercentage === 100 ? '-₹299' : 
+                       discountPercentage === 99.67 ? '-₹298' : 
+                       '-₹250'}
+                    </span>
                   </div>
                 )}
                 <div className="border-t my-2"></div>
                 <div className="flex justify-between items-center font-semibold">
                   <span>Total</span>
                   <span className="text-primary">
-                    {discountPercentage === 100 ? "₹0" : (discountPercentage === 84 ? "₹49" : "₹299")}
+                    {discountPercentage === 100 ? "₹0" : 
+                     discountPercentage === 99.67 ? "₹1" :
+                     discountPercentage === 84 ? "₹49" : "₹299"}
                   </span>
                 </div>
               </div>
@@ -635,28 +749,93 @@ const CopilotSection = () => {
                   onClick={() => {
                     // If 100% discount, skip payment processing
                     if (discountPercentage === 100) {
+                      // Skip validation here and proceed with direct passkey generation
                       setPaymentComplete(true);
                       setShowPaymentPopup(false);
-                      handleGeneratePasskey();
+                      
+                      // Use direct passkey generation for Bunny coupon
+                      handleBunnyPasskeyGeneration();
                       return;
                     }
                     
                     // Otherwise, open the appropriate Razorpay payment link
-                    const paymentLink = couponApplied && discountPercentage === 84
-                      ? "https://rzp.io/rzp/i6i8F9o" // ₹49 link
-                      : "https://rzp.io/rzp/rt6WXZL"; // ₹299 link
+                    let paymentLink = "https://rzp.io/rzp/rt6WXZL"; // Default ₹299 link
+                    let paymentButtonId = "pl_rt6WXZL"; // Default ₹299 button ID
                     
-                    // Open the payment link in a new window
-                    window.open(paymentLink, "_blank");
+                    if (couponApplied) {
+                      if (discountPercentage === 84) {
+                        paymentLink = "https://rzp.io/rzp/i6i8F9o"; // ₹49 link for CRACKNOW
+                        paymentButtonId = "pl_i6i8F9o"; // ₹49 button ID for CRACKNOW
+                      } else if (discountPercentage === 99.67) {
+                        paymentLink = "https://rzp.io/rzp/zfhkX5h5"; // ₹1 link for SRIDURGA
+                        paymentButtonId = "pl_QXZsxLHhndMZPh"; // ₹1 button ID for SRIDURGA
+                      }
+                    }
                     
-                    // Close the payment popup
-                    setShowPaymentPopup(false);
+                    setPaymentProcessing(true);
                     
-                    // Show toast notification
-                    toast({
-                      title: "Payment Initiated",
-                      description: "Complete the payment in the new window to generate your passkey.",
-                    });
+                    // For SriDurga coupon (₹1), use direct Razorpay checkout
+                    if (discountPercentage === 99.67) {
+                      // Create a simple form with the Razorpay button
+                      const tempForm = document.createElement('div');
+                      tempForm.style.position = 'fixed';
+                      tempForm.style.top = '-1000px';
+                      tempForm.style.left = '-1000px';
+                      tempForm.innerHTML = `<form><script src="https://checkout.razorpay.com/v1/payment-button.js" data-payment_button_id="pl_QXZsxLHhndMZPh" async></script></form>`;
+                      document.body.appendChild(tempForm);
+                      
+                      // Wait for the script to load and create the button
+                      const waitForButton = setInterval(() => {
+                        const button = tempForm.querySelector('button');
+                        if (button) {
+                          clearInterval(waitForButton);
+                          // Click the button to open Razorpay checkout
+                          button.click();
+                          
+                          // Show toast notification
+                          toast({
+                            title: "Payment Initiated",
+                            description: "Complete the payment to generate your passkey.",
+                          });
+                          
+                          // Reset processing state
+                          setTimeout(() => {
+                            setPaymentProcessing(false);
+                          }, 2000);
+                        }
+                      }, 100);
+                      
+                      // Fallback if button doesn't appear within 5 seconds
+                      setTimeout(() => {
+                        if (!tempForm.querySelector('button')) {
+                          clearInterval(waitForButton);
+                          document.body.removeChild(tempForm);
+                          
+                          // Fallback to direct link
+                          window.open("https://rzp.io/rzp/zfhkX5h5", "_blank");
+                          
+                          toast({
+                            title: "Payment Initiated",
+                            description: "Complete the payment in the new window to generate your passkey.",
+                          });
+                          
+                          setPaymentProcessing(false);
+                        }
+                      }, 5000);
+                    } else {
+                      // For other coupons, use the existing direct link approach
+                      window.open(paymentLink, "_blank");
+                      
+                      toast({
+                        title: "Payment Initiated",
+                        description: "Complete the payment in the new window to generate your passkey.",
+                      });
+                      
+                      setPaymentProcessing(false);
+                    }
+                    
+                    // Don't close the payment popup immediately
+                    // It will be closed after successful payment via URL parameters
                   }}
                   disabled={paymentProcessing}
                 >
@@ -671,7 +850,7 @@ const CopilotSection = () => {
                   ) : (
                     discountPercentage === 100 ? 
                     "Generate Passkey - Free" : 
-                    `Pay Now - ${discountPercentage === 84 ? "₹49" : "₹299"}`
+                    `Pay Now - ${discountPercentage === 99.67 ? "₹1" : discountPercentage === 84 ? "₹49" : "₹299"}`
                   )}
                 </Button>
               </div>
@@ -1021,23 +1200,47 @@ const CopilotSection = () => {
                         <div className="flex-grow">
                           <div className="flex flex-col w-full">
                             <div className="flex items-center space-x-2">
-                              <Input 
-                                placeholder="Apply Coupon Code" 
-                                className="max-w-[200px]"
-                                value={couponCode}
-                                onChange={(e) => {
-                                  setCouponCode(e.target.value);
-                                  setCouponError("");
-                                }}
-                              />
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={handleApplyCoupon}
-                                disabled={!couponCode || couponApplied}
-                              >
-                                {couponApplied ? "Applied" : "Apply"}
-                              </Button>
+                              {couponApplied ? (
+                                <div className="flex items-center space-x-2 border rounded-md px-3 py-1.5 bg-primary/10 text-primary max-w-[200px]">
+                                  <span className="font-medium text-sm">{couponCode.toUpperCase()}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 rounded-full hover:bg-primary/20 ml-auto"
+                                    onClick={() => {
+                                      setCouponApplied(false);
+                                      setCouponCode("");
+                                      setDiscountPercentage(0);
+                                      setCouponError("");
+                                    }}
+                                  >
+                                    <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M18 6L6 18M6 6l12 12" />
+                                    </svg>
+                                    <span className="sr-only">Remove coupon</span>
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <Input 
+                                    placeholder="Apply Coupon Code" 
+                                    className="max-w-[200px]"
+                                    value={couponCode}
+                                    onChange={(e) => {
+                                      setCouponCode(e.target.value);
+                                      setCouponError("");
+                                    }}
+                                  />
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={handleApplyCoupon}
+                                    disabled={!couponCode}
+                                  >
+                                    Apply
+                                  </Button>
+                                </>
+                              )}
                             </div>
                             {couponError && (
                               <p className="text-xs text-destructive mt-1">{couponError}</p>
@@ -1050,6 +1253,12 @@ const CopilotSection = () => {
                               <span className="line-through text-muted-foreground mr-2">₹299</span>
                               <span className="text-primary font-semibold">₹49</span>
                               <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">84% OFF</span>
+                            </>
+                          ) : couponApplied && discountPercentage === 99.67 ? (
+                            <>
+                              <span className="line-through text-muted-foreground mr-2">₹299</span>
+                              <span className="text-primary font-semibold">₹1</span>
+                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">99.67% OFF</span>
                             </>
                           ) : couponApplied && discountPercentage === 100 ? (
                             <>
