@@ -22,6 +22,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
   const [isFirstVisit, setIsFirstVisit] = useState<boolean>(false);
   const [showResourcesDialog, setShowResourcesDialog] = useState<boolean>(false);
+  const [showPlansDialog, setShowPlansDialog] = useState<boolean>(false);
   
   // Fetch user data on component mount
   useEffect(() => {
@@ -237,9 +238,9 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 transition={{ delay: 0.2, duration: 0.4 }}
               >
                 <div className="p-6 flex flex-col space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Recent Activity</h3>
-                  <p className="text-2xl font-bold">3 Sessions</p>
-                  <p className="text-sm text-muted-foreground">Last active: Today</p>
+                  <h3 className="text-sm font-medium text-muted-foreground">Interview Assist</h3>
+                  <p className="text-2xl font-bold">Ready</p>
+                  <p className="text-sm text-muted-foreground">Extension active</p>
                 </div>
               </motion.div>
               
@@ -251,9 +252,9 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 transition={{ delay: 0.3, duration: 0.4 }}
               >
                 <div className="p-6 flex flex-col space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Productivity</h3>
-                  <p className="text-2xl font-bold">92%</p>
-                  <p className="text-sm text-muted-foreground">+5% from last week</p>
+                  <h3 className="text-sm font-medium text-muted-foreground">Greecode AI</h3>
+                  <p className="text-2xl font-bold">Connected</p>
+                  <p className="text-sm text-muted-foreground">Real-time assistance ready</p>
                 </div>
               </motion.div>
               
@@ -268,9 +269,12 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                   <h3 className="text-sm font-medium text-muted-foreground">Plan</h3>
                   <p className="text-2xl font-bold">Pay Per Session</p>
                   <p className="text-sm text-muted-foreground">
-                    <a href="#" className="text-primary hover:underline text-xs">
+                    <button 
+                      onClick={() => setShowPlansDialog(true)} 
+                      className="text-primary hover:underline text-xs bg-transparent border-none p-0 cursor-pointer"
+                    >
                       Upgrade plan
-                    </a>
+                    </button>
                   </p>
                 </div>
               </motion.div>
@@ -429,6 +433,109 @@ const MainApp = ({ onLogout }: MainAppProps) => {
               </svg>
               Help & Support
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Plans Dialog */}
+      <Dialog open={showPlansDialog} onOpenChange={setShowPlansDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose Your Plan</DialogTitle>
+            <DialogDescription>
+              Select the plan that best fits your interview preparation needs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Current Plan */}
+            <div className="rounded-lg border p-4 relative">
+              <div className="absolute top-3 right-3 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                Current Plan
+              </div>
+              <h3 className="font-medium text-lg mb-2">Pay Per Session</h3>
+              <p className="text-sm text-muted-foreground mb-4">Perfect for occasional interview preparation</p>
+              
+              <div className="space-y-2 mb-4">
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm">Pay only for what you use</span>
+                </div>
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm">Basic interview assistance</span>
+                </div>
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm">Standard response time</span>
+                </div>
+              </div>
+              
+              <div className="flex items-baseline mb-4">
+                <span className="text-3xl font-bold">₹99</span>
+                <span className="text-sm text-muted-foreground ml-1">/ session</span>
+              </div>
+              
+              <Button variant="outline" className="w-full" disabled>
+                Current Plan
+              </Button>
+            </div>
+            
+            {/* Genz Plan */}
+            <div className="rounded-lg border border-primary p-4 relative bg-primary/5">
+              <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+                Recommended
+              </div>
+              <h3 className="font-medium text-lg mb-2">Genz</h3>
+              <p className="text-sm text-muted-foreground mb-4">For serious interview preparation</p>
+              
+              <div className="space-y-2 mb-4">
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm"><strong>5 interviews</strong> per month</span>
+                </div>
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm"><strong>Priority</strong> real-time assistance</span>
+                </div>
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm"><strong>Advanced</strong> interview analytics</span>
+                </div>
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm"><strong>Unlimited</strong> practice sessions</span>
+                </div>
+                <div className="flex items-start">
+                  <svg className="h-4 w-4 text-primary mr-2 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span className="text-sm"><strong>Premium</strong> support</span>
+                </div>
+              </div>
+              
+              <div className="flex items-baseline mb-4">
+                <span className="text-3xl font-bold">₹599</span>
+                <span className="text-sm text-muted-foreground ml-1">/ month</span>
+              </div>
+              
+              <Button variant="default" className="w-full">
+                Upgrade Now
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
