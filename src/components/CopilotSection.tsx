@@ -568,16 +568,12 @@ const CopilotSection = () => {
               
               <div className="space-y-2">
                 <Label>Payment Method</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="w-full">
                   <div className="border rounded-md p-3 flex items-center space-x-2 cursor-pointer bg-muted/50">
                     <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center">
                       <div className="h-2 w-2 rounded-full bg-primary"></div>
                     </div>
-                    <span className="text-sm font-medium">Credit/Debit Card</span>
-                  </div>
-                  <div className="border rounded-md p-3 flex items-center space-x-2 cursor-pointer">
-                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground"></div>
-                    <span className="text-sm">UPI</span>
+                    <span className="text-sm font-medium">UPI</span>
                   </div>
                 </div>
               </div>
