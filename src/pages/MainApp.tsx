@@ -541,8 +541,14 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                   variant="default" 
                   className="w-full"
                   onClick={() => {
-                    // Replace with your actual Razorpay payment link
-                    window.open('https://rzp.io/l/greecode-genz-plan', '_blank');
+                    // Get current user details
+                    const user = auth.currentUser;
+                    const email = encodeURIComponent(user?.email || '');
+                    const name = encodeURIComponent(userName || '');
+                    
+                    // Use the actual Razorpay payment link with prefilled user details
+                    const paymentLink = `https://rzp.io/rzp/3yn20vP7?prefill[email]=${email}&prefill[name]=${name}`;
+                    window.open(paymentLink, '_blank');
                     // Close the dialog after opening payment page
                     setShowPlansDialog(false);
                     // Show a toast notification
