@@ -1,12 +1,16 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, FileText, Copy, BookOpen, Search } from "lucide-react";
+import { MessageSquare, FileText, Copy, BookOpen, Search, Github, Linkedin, Upload, Check } from "lucide-react";
 import GroqChat from "./GroqChat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { auth, db } from "@/integrations/firebase/client";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { supabase } from "@/integrations/supabase/client";
 
 // Helper function to safely interact with Chrome API
 const useChromeAPI = () => {
@@ -54,138 +58,105 @@ const ProSection = () => {
   const [selectedText, setSelectedText] = useState<string>("");
   const [aiResponse, setAiResponse] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>("tools");
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [githubUrl, setGithubUrl] = useState<string>("");
+  const [linkedinUrl, setLinkedinUrl] = useState<string>("");
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [previousInterviews, setPreviousInterviews] = useState<any[]>([]);
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
   const { toast } = useToast();
   const { isExtensionEnvironment, sendTabMessage } = useChromeAPI();
   
-  // Handle extract selected text button
-  const handleExtractSelected = async () => {
-    try {
-      if (!isExtensionEnvironment) {
+  // Load user profile data when component mounts
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        setIsLoadingProfile(true);
+        const user = auth.currentUser;
+        
+        if (user) {
+          const userDocRef = doc(db, "profiles", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setGithubUrl(userData.github_url || "");
+            setLinkedinUrl(userData.linkedin_url || "");
+          }
+          
+          // Load previous interviews
+          const { data: passkeys } = await supabase
+            .from("passkeys")
+            .select("*")
+            .eq("user_id", user.uid)
+            .order("created_at", { ascending: false });
+            
+          if (passkeys) {
+            setPreviousInterviews(passkeys);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
         toast({
-          title: "Not in Extension Environment",
-          description: "This feature is only available in the Chrome extension.",
+          title: "Error",
+          description: "Failed to load profile data.",
           variant: "destructive",
         });
-        return;
+      } finally {
+        setIsLoadingProfile(false);
       }
+    };
+    
+    loadUserProfile();
+  }, []);
+  
+  // Handle save profile
+  const handleSaveProfile = async () => {
+    try {
+      setIsSaving(true);
+      const user = auth.currentUser;
       
-      const response = await sendTabMessage({ action: "START_SELECTION" });
-      
-      if (response?.success) {
-        toast({
-          title: "Selection Mode",
-          description: "Click on an element to extract its text.",
+      if (user) {
+        const userDocRef = doc(db, "profiles", user.uid);
+        await updateDoc(userDocRef, {
+          github_url: githubUrl,
+          linkedin_url: linkedinUrl,
+          updated_at: new Date().toISOString()
         });
         
-        // Close the popup to let the user interact with the page
-        if (window.close) {
-          window.close();
-        }
-      } else {
-        throw new Error(response?.error || "Failed to start selection mode");
-      }
-    } catch (error) {
-      console.error("Extract selected error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to extract text. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Handle read page button
-  const handleReadPage = async () => {
-    try {
-      setIsLoading(true);
-      
-      if (!isExtensionEnvironment) {
-        setSelectedText("This feature is only available in the Chrome extension.");
-        setIsLoading(false);
-        return;
-      }
-      
-      const response = await sendTabMessage({ action: "EXTRACT_PAGE_CONTENT" });
-      
-      setIsLoading(false);
-      
-      if (response?.success) {
-        setSelectedText(response.content);
         toast({
-          title: "Page Read",
-          description: "Page content extracted successfully.",
+          title: "Profile Saved",
+          description: "Your profile links have been updated successfully.",
         });
-      } else {
-        throw new Error(response?.error || "Failed to read page");
       }
     } catch (error) {
-      console.error("Read page error:", error);
-      setIsLoading(false);
+      console.error("Save profile error:", error);
       toast({
         title: "Error",
-        description: "Failed to read page. Please try again.",
+        description: "Failed to save profile. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
   
-  // Handle summarize button
-  const handleSummarize = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Check if text is selected
-      if (!selectedText) {
-        // Try to read the page first
-        await handleReadPage();
-      }
-      
-      // TODO: Connect to Groq AI for summarization
-      // This should be handled by the background script
-      
-      // For now, we'll simulate a response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      setAiResponse("This is a simulated summary of the content. In a real implementation, this would be generated by the Groq AI API based on the extracted content.");
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Summarize error:", error);
-      setIsLoading(false);
-      toast({
-        title: "Error",
-        description: "Failed to summarize content. Please try again.",
-        variant: "destructive",
-      });
-    }
+  // Handle resume upload
+  const handleUploadResume = () => {
+    // This would be implemented to handle resume uploads
+    toast({
+      title: "Resume Upload",
+      description: "This feature will be available soon.",
+    });
   };
   
-  // Handle ask question button
-  const handleAskQuestion = async () => {
-    try {
-      const question = prompt("What would you like to ask about this content?");
-      
-      if (!question) return;
-      
-      setIsLoading(true);
-      
-      // TODO: Connect to Groq AI for question answering
-      // This should be handled by the background script
-      
-      // For now, we'll simulate a response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      setAiResponse(`Answer to "${question}": This is a simulated answer. In a real implementation, this would be generated by the Groq AI API based on your question and the extracted content.`);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Ask question error:", error);
-      setIsLoading(false);
-      toast({
-        title: "Error",
-        description: "Failed to answer question. Please try again.",
-        variant: "destructive",
-      });
-    }
+  // Handle ATS check
+  const handleCheckATS = () => {
+    // This would be implemented to check resume against ATS
+    toast({
+      title: "ATS Check",
+      description: "This feature will be available soon.",
+    });
   };
   
   // Handle copy text button
@@ -210,89 +181,126 @@ const ProSection = () => {
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="tools">Extract Tools</TabsTrigger>
+          <TabsTrigger value="dashboard">User Dashboard</TabsTrigger>
           <TabsTrigger value="chat">AI Chat</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="tools" className="space-y-4">
+        <TabsContent value="dashboard" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Pro Tools</CardTitle>
+              <CardTitle>User Dashboard</CardTitle>
               <CardDescription>
-                Extract text from websites and analyze with AI
+                Manage your profile and interview history
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={handleExtractSelected}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Extract Selected
-                </Button>
-                <Button onClick={handleReadPage} disabled={isLoading}>
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  Read Page
-                </Button>
-                <Button onClick={handleSummarize} disabled={isLoading}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Summarize
-                </Button>
-                <Button onClick={handleAskQuestion} disabled={isLoading}>
-                  <Search className="mr-2 h-4 w-4" />
-                  Ask Question
-                </Button>
-              </div>
-
-              {selectedText && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">Extracted Content</h3>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleCopyText(selectedText)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={selectedText}
-                    onChange={(e) => setSelectedText(e.target.value)}
-                    className="min-h-[100px]"
-                    placeholder="Extracted text will appear here..."
-                  />
-                </div>
-              )}
-
-              {isLoading && (
+            <CardContent className="space-y-6">
+              {isLoadingProfile ? (
                 <div className="flex justify-center py-4">
                   <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
                 </div>
-              )}
-
-              {aiResponse && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">AI Response</h3>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleCopyText(aiResponse)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="rounded-md bg-muted p-4">
-                    <div className="flex items-start space-x-2">
-                      <MessageSquare className="mt-0.5 h-4 w-4 text-primary" />
-                      <div className="text-sm">{aiResponse}</div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Profile Links</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Github className="h-5 w-5 text-muted-foreground" />
+                        <Input 
+                          placeholder="Your GitHub URL"
+                          value={githubUrl}
+                          onChange={(e) => setGithubUrl(e.target.value)}
+                          className="flex-1"
+                        />
+                        {githubUrl && <Check className="h-4 w-4 text-green-500" />}
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Linkedin className="h-5 w-5 text-muted-foreground" />
+                        <Input 
+                          placeholder="Your LinkedIn URL"
+                          value={linkedinUrl}
+                          onChange={(e) => setLinkedinUrl(e.target.value)}
+                          className="flex-1"
+                        />
+                        {linkedinUrl && <Check className="h-4 w-4 text-green-500" />}
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button 
+                        onClick={handleSaveProfile} 
+                        disabled={isSaving}
+                        className="bg-primary text-white"
+                      >
+                        {isSaving ? (
+                          <>
+                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            Save Profile
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
-                </div>
+                  
+                  <div className="space-y-4 pt-4">
+                    <h3 className="text-sm font-medium">Previous Interviews</h3>
+                    
+                    {previousInterviews.length > 0 ? (
+                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                        {previousInterviews.map((interview) => (
+                          <div key={interview.id} className="rounded-md border p-3 space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{interview.company}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(interview.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              <p>Role: {interview.job_role}</p>
+                              <p>Passkey: {interview.passkey}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed p-6 text-center">
+                        <p className="text-muted-foreground text-sm">No interviews available yet.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Your completed interviews will appear here.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 pt-4">
+                    <Button 
+                      onClick={handleUploadResume} 
+                      variant="outline"
+                      className="flex items-center justify-center"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Resume
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleCheckATS} 
+                      variant="outline"
+                      className="flex items-center justify-center"
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Check ATS
+                    </Button>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Make sure you're on the webpage you want to analyze
+                  </p>
+                </>
               )}
             </CardContent>
-            <CardFooter className="text-xs text-muted-foreground">
-              Make sure you're on the webpage you want to analyze
-            </CardFooter>
           </Card>
         </TabsContent>
         
