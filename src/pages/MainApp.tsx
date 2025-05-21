@@ -24,6 +24,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
   const [isFirstVisit, setIsFirstVisit] = useState<boolean>(false);
   const [showResourcesDialog, setShowResourcesDialog] = useState<boolean>(false);
   const [showPlansDialog, setShowPlansDialog] = useState<boolean>(false);
+  const [userPlan, setUserPlan] = useState<string>("Pay Per Session");
   const { toast } = useToast();
   
   // Fetch user data on component mount
@@ -50,6 +51,22 @@ const MainApp = ({ onLogout }: MainAppProps) => {
             const loginCount = (userData.login_count || 0) + 1;
             const isFirstLogin = loginCount === 1;
             setIsFirstVisit(isFirstLogin);
+            
+            // Check if user has a subscription
+            if (userData.subscription && userData.subscription.plan) {
+              // Check if subscription is active
+              const isActive = userData.subscription.status === "active";
+              const endDate = userData.subscription.endDate ? new Date(userData.subscription.endDate) : null;
+              const isValid = endDate ? new Date() < endDate : false;
+              
+              if (isActive && isValid && userData.subscription.plan === "genz") {
+                setUserPlan("Genz");
+              } else {
+                setUserPlan("Pay Per Session");
+              }
+            } else {
+              setUserPlan("Pay Per Session");
+            }
             
             // Update login count in Firestore
             await setDoc(userDocRef, {
@@ -269,14 +286,18 @@ const MainApp = ({ onLogout }: MainAppProps) => {
               >
                 <div className="p-6 flex flex-col space-y-2">
                   <h3 className="text-sm font-medium text-muted-foreground">Plan</h3>
-                  <p className="text-2xl font-bold">Pay Per Session</p>
+                  <p className="text-2xl font-bold">{userPlan}</p>
                   <p className="text-sm text-muted-foreground">
-                    <button 
-                      onClick={() => setShowPlansDialog(true)} 
-                      className="text-primary hover:underline text-xs bg-transparent border-none p-0 cursor-pointer"
-                    >
-                      Upgrade plan
-                    </button>
+                    {userPlan === "Genz" ? (
+                      <span className="text-green-500 text-xs">Active subscription</span>
+                    ) : (
+                      <button 
+                        onClick={() => setShowPlansDialog(true)} 
+                        className="text-primary hover:underline text-xs bg-transparent border-none p-0 cursor-pointer"
+                      >
+                        Upgrade plan
+                      </button>
+                    )}
                   </p>
                 </div>
               </motion.div>
@@ -451,9 +472,11 @@ const MainApp = ({ onLogout }: MainAppProps) => {
           <div className="grid grid-cols-2 gap-4 py-4">
             {/* Current Plan */}
             <div className="rounded-lg border p-4 relative h-full flex flex-col">
-              <div className="absolute top-3 right-3 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                Current Plan
-              </div>
+              {userPlan === "Pay Per Session" && (
+                <div className="absolute top-3 right-3 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                  Current Plan
+                </div>
+              )}
               <h3 className="font-medium text-lg mb-2 pr-24">Pay Per Session</h3>
               <p className="text-sm text-muted-foreground mb-4">Perfect for occasional interview preparation</p>
               
@@ -493,7 +516,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
             {/* Genz Plan */}
             <div className="rounded-lg border border-primary p-4 relative h-full flex flex-col bg-primary/5">
               <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
-                Recommended
+                {userPlan === "Genz" ? "Current Plan" : "Recommended"}
               </div>
               <h3 className="font-medium text-lg mb-2">Genz</h3>
               <p className="text-sm text-muted-foreground mb-4">For serious interview preparation</p>
@@ -540,14 +563,20 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 <Button 
                   variant="default" 
                   className="w-full"
+                  disabled={userPlan === "Genz"}
                   onClick={() => {
                     // Get current user details
                     const user = auth.currentUser;
                     const email = encodeURIComponent(user?.email || '');
                     const name = encodeURIComponent(userName || '');
                     
-                    // Use the actual Razorpay payment link with prefilled user details
-                    const paymentLink = `https://rzp.io/rzp/3yn20vP7?prefill[email]=${email}&prefill[name]=${name}`;
+                    // Get the base URL for redirects
+                    const baseUrl = window.location.origin;
+                    const successUrl = encodeURIComponent(`${baseUrl}/payment-success`);
+                    const failureUrl = encodeURIComponent(`${baseUrl}/payment-failed`);
+                    
+                    // Use the actual Razorpay payment link with prefilled user details and redirect URLs
+                    const paymentLink = `https://rzp.io/rzp/3yn20vP7?prefill[email]=${email}&prefill[name]=${name}&redirect=true&callback_url=${successUrl}&cancel_url=${failureUrl}`;
                     window.open(paymentLink, '_blank');
                     // Close the dialog after opening payment page
                     setShowPlansDialog(false);
@@ -558,7 +587,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                     });
                   }}
                 >
-                  Upgrade Now
+                  {userPlan === "Genz" ? "Current Plan" : "Upgrade Now"}
                 </Button>
               </div>
             </div>
