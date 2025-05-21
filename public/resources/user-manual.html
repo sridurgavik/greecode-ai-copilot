@@ -4,18 +4,53 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Greecode User Manual</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
+    :root {
+      --primary-color: #0ea5e9;
+      --text-color: #333;
+      --bg-color: #fff;
+      --card-bg: #f9f9f9;
+      --border-color: #eee;
+      --tip-bg: #e6f7ff;
+      --tip-border: #1890ff;
+      --warning-bg: #fff7e6;
+      --warning-border: #fa8c16;
+      --feature-bg: #f9f9f9;
+      --feature-border: #0ea5e9;
+      --header-bg: rgba(255, 255, 255, 0.95);
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    [data-theme="dark"] {
+      --primary-color: #38bdf8;
+      --text-color: #e2e8f0;
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --tip-bg: #0c4a6e;
+      --tip-border: #0284c7;
+      --warning-bg: #422006;
+      --warning-border: #ea580c;
+      --feature-bg: #1e293b;
+      --feature-border: #38bdf8;
+      --header-bg: rgba(15, 23, 42, 0.95);
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       line-height: 1.6;
-      color: #333;
+      color: var(--text-color);
+      background-color: var(--bg-color);
       max-width: 800px;
       margin: 0 auto;
       padding: 20px;
+      transition: background-color 0.3s, color 0.3s;
     }
     
     h1, h2, h3, h4 {
-      color: #0ea5e9;
+      color: var(--primary-color);
       margin-top: 1.5em;
     }
     
@@ -23,45 +58,91 @@
       text-align: center;
       font-size: 2.5em;
       margin-bottom: 1em;
-      border-bottom: 2px solid #0ea5e9;
+      border-bottom: 2px solid var(--primary-color);
       padding-bottom: 0.5em;
+    }
+    
+    .header {
+      position: sticky;
+      top: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1em;
+      background-color: var(--header-bg);
+      box-shadow: var(--shadow);
+      z-index: 100;
+      margin: -20px -20px 0 -20px;
+      padding: 20px;
+    }
+    
+    .theme-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      font-size: 0.9em;
+    }
+    
+    .theme-toggle svg {
+      margin-right: 5px;
+      width: 20px;
+      height: 20px;
     }
     
     .logo {
       text-align: center;
       margin-bottom: 2em;
+      display: flex;
+      align-items: center;
     }
     
     .logo svg {
-      width: 80px;
-      height: 80px;
+      width: 40px;
+      height: 40px;
+      stroke: var(--primary-color);
+    }
+    
+    .logo-text {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-left: 10px;
+      color: var(--primary-color);
     }
     
     .section {
       margin-bottom: 2em;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border-color);
       padding-bottom: 1em;
     }
     
     .feature {
-      background-color: #f9f9f9;
-      border-left: 4px solid #0ea5e9;
+      background-color: var(--feature-bg);
+      border-left: 4px solid var(--feature-border);
       padding: 1em;
       margin: 1em 0;
+      border-radius: 0 4px 4px 0;
+      box-shadow: var(--shadow);
     }
     
     .tip {
-      background-color: #e6f7ff;
-      border-left: 4px solid #1890ff;
+      background-color: var(--tip-bg);
+      border-left: 4px solid var(--tip-border);
       padding: 1em;
       margin: 1em 0;
+      border-radius: 0 4px 4px 0;
+      box-shadow: var(--shadow);
     }
     
     .warning {
-      background-color: #fff7e6;
-      border-left: 4px solid #fa8c16;
+      background-color: var(--warning-bg);
+      border-left: 4px solid var(--warning-border);
       padding: 1em;
       margin: 1em 0;
+      border-radius: 0 4px 4px 0;
+      box-shadow: var(--shadow);
     }
     
     .steps {
@@ -77,10 +158,13 @@
       width: 100%;
       border-collapse: collapse;
       margin: 1em 0;
+      box-shadow: var(--shadow);
+      border-radius: 4px;
+      overflow: hidden;
     }
     
     table, th, td {
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-color);
     }
     
     th, td {
@@ -89,7 +173,7 @@
     }
     
     th {
-      background-color: #f2f2f2;
+      background-color: var(--card-bg);
     }
     
     img {
@@ -97,38 +181,91 @@
       height: auto;
       display: block;
       margin: 1em auto;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
     }
     
     footer {
       text-align: center;
       margin-top: 3em;
-      color: #666;
+      color: var(--text-color);
+      opacity: 0.7;
       font-size: 0.9em;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1em;
+    }
+    
+    /* Smooth scrolling for anchor links */
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.3s;
+      box-shadow: var(--shadow);
+    }
+    
+    .back-to-top.visible {
+      opacity: 1;
     }
     
     .toc {
-      background-color: #f9f9f9;
-      padding: 1em;
-      margin: 1em 0;
+      background-color: var(--card-bg);
+      padding: 1.5em;
+      margin: 1.5em 0;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    
+    .toc h2 {
+      margin-top: 0;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5em;
     }
     
     .toc ul {
       list-style-type: none;
       padding-left: 1em;
+      margin-bottom: 0;
     }
     
     .toc li {
-      margin-bottom: 0.5em;
+      margin-bottom: 0.8em;
+      position: relative;
+    }
+    
+    .toc li::before {
+      content: '•';
+      color: var(--primary-color);
+      position: absolute;
+      left: -1em;
     }
     
     .toc a {
       text-decoration: none;
-      color: #0ea5e9;
+      color: var(--primary-color);
+      transition: color 0.2s;
     }
     
     .toc a:hover {
       text-decoration: underline;
+      color: var(--primary-color);
+      opacity: 0.8;
     }
     
     @media print {
@@ -158,12 +295,94 @@
       }
     }
   </style>
+  <script>
+    // Function to toggle dark mode
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? '' : 'dark';
+      
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      
+      // Update button text
+      const themeToggleText = document.getElementById('theme-toggle-text');
+      themeToggleText.textContent = newTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+      
+      // Update icon
+      const moonIcon = document.getElementById('moon-icon');
+      const sunIcon = document.getElementById('sun-icon');
+      
+      if (newTheme === 'dark') {
+        moonIcon.style.display = 'none';
+        sunIcon.style.display = 'block';
+      } else {
+        moonIcon.style.display = 'block';
+        sunIcon.style.display = 'none';
+      }
+    }
+    
+    // Function to handle scroll events for back to top button
+    function handleScroll() {
+      const backToTopButton = document.getElementById('back-to-top');
+      if (window.scrollY > 300) {
+        backToTopButton.classList.add('visible');
+      } else {
+        backToTopButton.classList.remove('visible');
+      }
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set theme based on localStorage or system preference
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      if (savedTheme === 'dark' || (savedTheme === null && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('theme-toggle-text').textContent = 'Light Mode';
+        document.getElementById('moon-icon').style.display = 'none';
+        document.getElementById('sun-icon').style.display = 'block';
+      } else {
+        document.getElementById('sun-icon').style.display = 'none';
+      }
+      
+      // Add scroll event listener
+      window.addEventListener('scroll', handleScroll);
+      
+      // Add click event for back to top button
+      document.getElementById('back-to-top').addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  </script>
 </head>
 <body>
-  <div class="logo">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="80" height="80" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
+  <div class="header">
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+      <span class="logo-text">Greecode</span>
+    </div>
+    
+    <button class="theme-toggle" onclick="toggleDarkMode()">
+      <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <span id="theme-toggle-text">Dark Mode</span>
+    </button>
   </div>
   
   <h1>Greecode User Manual</h1>
@@ -443,5 +662,11 @@
     <p>© 2025 Greecode. All rights reserved.</p>
     <p>Version 1.0.0</p>
   </footer>
+  
+  <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
 </body>
 </html>

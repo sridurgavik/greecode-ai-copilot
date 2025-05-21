@@ -453,23 +453,13 @@ const MainApp = ({ onLogout }: MainAppProps) => {
               variant="outline" 
               className="w-full justify-start text-left font-normal"
               onClick={() => {
-                // Create a link element
-                const link = document.createElement('a');
-                // Set the href to the PDF file
-                link.href = '/resources/greecode-user-manual.pdf';
-                // Set the download attribute to suggest a filename
-                link.download = 'Greecode-User-Manual.pdf';
-                // Append the link to the body
-                document.body.appendChild(link);
-                // Trigger the download
-                link.click();
-                // Clean up
-                document.body.removeChild(link);
+                // Open the user manual HTML page in a new tab
+                window.open('/resources/user-manual.html', '_blank');
                 
                 // Show a toast notification
                 toast({
-                  title: "User Manual Downloaded",
-                  description: "The Greecode User Manual has been downloaded to your device.",
+                  title: "User Manual Opened",
+                  description: "The Greecode User Manual has opened in a new tab.",
                 });
               }}
             >
