@@ -249,17 +249,31 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 </div>
               </motion.div>
               
-              {/* Recent Activity Card */}
+              {/* Reschedule Interview Card */}
               <motion.div 
-                className="rounded-lg border bg-card text-card-foreground shadow-sm"
+                className="rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:shadow-md transition-all"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
+                onClick={() => window.location.href = "/reschedule-interview"}
               >
                 <div className="p-6 flex flex-col space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Interview Assist</h3>
-                  <p className="text-2xl font-bold">Ready</p>
-                  <p className="text-sm text-muted-foreground">Extension active</p>
+                  <h3 className="text-sm font-medium text-muted-foreground">Reschedule Interview</h3>
+                  <p className="text-2xl font-bold">Manage</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">Update your schedule</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.location.href = "/reschedule-interview";
+                      }}
+                    >
+                      Reschedule
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
               

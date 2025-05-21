@@ -1,9 +1,13 @@
 
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthPage from "@/pages/AuthPage";
 import MainApp from "@/pages/MainApp";
+import PaymentSuccess from "@/pages/payment-success";
+import PaymentFailed from "@/pages/payment-failed";
+import RescheduleInterview from "@/pages/reschedule-interview";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/integrations/firebase/client";
 
@@ -102,14 +106,22 @@ const App = () => {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="greecode-theme">
-      <div className="min-h-screen bg-background text-foreground">
-        {isAuthenticated ? (
-          <MainApp onLogout={handleLogout} />
-        ) : (
-          <AuthPage onLoginSuccess={handleLoginSuccess} />
-        )}
-        <Toaster />
-      </div>
+      <Router>
+        <div className="min-h-screen bg-background text-foreground">
+          {isAuthenticated ? (
+            <Routes>
+              <Route path="/" element={<MainApp onLogout={handleLogout} />} />
+              <Route path="/payment-success" element={<PaymentSuccess />} />
+              <Route path="/payment-failed" element={<PaymentFailed />} />
+              <Route path="/reschedule-interview" element={<RescheduleInterview />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          ) : (
+            <AuthPage onLoginSuccess={handleLoginSuccess} />
+          )}
+          <Toaster />
+        </div>
+      </Router>
     </ThemeProvider>
   );
 };
