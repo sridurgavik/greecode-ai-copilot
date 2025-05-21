@@ -1,73 +1,79 @@
-# Welcome to your Lovable project
+# Greecode AI Copilot: Real-Time Interview Assistant
 
-## Project info
+## Overview
 
-**URL**: https://lovable.dev/projects/b90a2b8a-8daf-4ce1-a10c-e2e849cd4d9d
+Greecode AI Copilot is a powerful real-time interview assistant that helps users excel in job interviews by providing instant, tailored responses through a browser extension. The platform consists of two main components:
 
-## How can I edit this code?
+1. **Web Application**: For generating and managing interview-specific passkeys
+2. **Browser Extension**: For accessing real-time answers during actual interviews
 
-There are several ways of editing your application.
+## Key Features
 
-**Use Lovable**
+### Passkey Generation
+- Create unique 6-digit passkeys linked to specific interview details
+- Enter job role, company, job description, and interview date/time
+- Upload resume for context-aware answers
+- Flexible payment options with coupon support
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b90a2b8a-8daf-4ce1-a10c-e2e849cd4d9d) and start prompting.
+### Coupon System
+- "CRACKNOW": 84% discount (₹299 → ₹49)
+- "BUNNY": 100% discount (₹299 → ₹0)
+- Real-time discount calculation
 
-Changes made via Lovable will be committed automatically to this repo.
+### User Profile
+- View and manage personal information
+- Access all active passkeys
+- Copy passkeys with one click
 
-**Use your preferred IDE**
+### Browser Extension Integration
+- Simple login with email and passkey
+- Access interview-specific answers in real-time
+- Tailored responses based on job role and company
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Follow these steps to set up the project locally:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Step 1: Clone the repository
+git clone https://github.com/sridurgavik/greecode-ai-copilot.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navigate to the project directory
+cd greecode-ai-copilot
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+## Technologies Used
 
 This project is built with:
 
-- Vite
-- TypeScript
 - React
-- shadcn-ui
+- TypeScript
+- Firebase Authentication
+- Supabase Database
+- Framer Motion
 - Tailwind CSS
+- shadcn/ui Components
 
-## How can I deploy this project?
+## How It Works
 
-Simply open [Lovable](https://lovable.dev/projects/b90a2b8a-8daf-4ce1-a10c-e2e849cd4d9d) and click on Share -> Publish.
+1. **User Registration**: Create an account with email verification
+2. **Passkey Generation**: Enter interview details and generate a unique passkey
+3. **Browser Extension**: Use the passkey in our extension during your interview
+4. **Real-Time Answers**: Receive tailored responses based on your interview context
 
-## Can I connect a custom domain to my Lovable project?
+## Project Structure
 
-Yes, you can!
+- `/src/components`: UI components including the main CopilotSection
+- `/src/pages`: Main application pages (Auth, Main)
+- `/src/integrations`: Firebase and Supabase integrations
+- `/src/hooks`: Custom React hooks
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Contributing
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Contributions are welcome! Please feel free to submit a Pull Request.
