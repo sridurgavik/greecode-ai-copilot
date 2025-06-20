@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import DirectRazorpayPayment from "./DirectRazorpayPayment";
+import { openRazorpayCheckout } from "@/utils/razorpayHelper";
+import { companies, jobRoles } from "@/data/suggestions";
+import { Autocomplete } from "./ui/autocomplete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +39,10 @@ const CopilotSection = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [passkeyError, setPasskeyError] = useState<string>("");
   const [paymentComplete, setPaymentComplete] = useState<boolean>(false);
-  const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [showRazorpayForm, setShowRazorpayForm] = useState<boolean>(false);
+  const [razorpayButtonId, setRazorpayButtonId] = useState<string>("");
+  const [flipCardAmount, setFlipCardAmount] = useState<string>("299");
   const [paymentError, setPaymentError] = useState<string>("");
   const [resumeUrl, setResumeUrl] = useState<string>("");
   const [resumeAnalysis, setResumeAnalysis] = useState<string>("");
@@ -386,45 +393,48 @@ const CopilotSection = () => {
   // Handle coupon code application
   const handleApplyCoupon = () => {
     if (!couponCode) {
-      toast({
-        title: "Error",
-        description: "Please enter a coupon code.",
-        variant: "destructive",
-      });
+      setCouponError("Please enter a coupon code");
       return;
     }
-
+    
+    // Reset any previous coupon
+    setCouponApplied(false);
+    setDiscountPercentage(0);
     setCouponError("");
     
-    // Check for valid coupon codes
-    if (couponCode.toUpperCase() === "CRACKNOW") {
-      setCouponApplied(true);
-      setDiscountPercentage(84);
-      toast({
-        title: "Coupon Applied",
-        description: "You got 84% discount with CRACKNOW coupon!",
-      });
-    } else if (couponCode.toUpperCase() === "SRIDURGA") {
-      setCouponApplied(true);
-      setDiscountPercentage(99.67);
-      toast({
-        title: "Coupon Applied",
-        description: "You got 99.67% discount with SRIDURGA coupon!",
-      });
-    } else if (couponCode.toUpperCase() === "BUNNY") {
+    // Check for valid coupons
+    if (couponCode.toUpperCase() === "BUNNY") {
       setCouponApplied(true);
       setDiscountPercentage(100);
       toast({
         title: "Coupon Applied",
         description: "You got 100% discount with BUNNY coupon!",
       });
-    } else {
-      setCouponError("Invalid or expired coupon code");
+    } else if (couponCode.toUpperCase() === "SRIDURGA") {
+      setCouponApplied(true);
+      setDiscountPercentage(99.67);
+      setFlipCardAmount("1"); // Set flip card amount to 1 for SriDurga coupon
+      console.log('SRIDURGA coupon applied, discount set to 99.67%');
+      // Reset any previous Razorpay button ID to ensure it's refreshed
+      setRazorpayButtonId("");
+      setTimeout(() => {
+        // Set the button ID after a brief delay to ensure state updates
+        setRazorpayButtonId("pl_QXbDxJ0azbF0a3"); // Correct SriDurga 1 INR button ID
+      }, 50);
       toast({
-        title: "Invalid Coupon",
-        description: "The coupon code you entered is invalid or expired.",
-        variant: "destructive",
+        title: "Coupon Applied",
+        description: "You got 99.67% discount with SRIDURGA coupon!",
       });
+    } else if (couponCode.toUpperCase() === "CRACKNOW") {
+      setCouponApplied(true);
+      setDiscountPercentage(84);
+      setFlipCardAmount("49"); // Set flip card amount to 49 for CRACKNOW coupon
+      toast({
+        title: "Coupon Applied",
+        description: "You got 84% discount with CRACKNOW coupon!",
+      });
+    } else {
+      setCouponError("Invalid coupon code");
     }
   };
 
@@ -571,8 +581,8 @@ const CopilotSection = () => {
     }
   };
 
-  // Special function for Bunny coupon (100% discount) to guarantee passkey generation
-  const handleBunnyPasskeyGeneration = async () => {
+  // Function to generate passkey (works for all payment options)
+  const handlePasskeyGeneration = async (paymentId?: string) => {
     // Set loading state
     setIsLoading(true);
     try {
@@ -590,16 +600,17 @@ const CopilotSection = () => {
         return;
       }
       
-      // Create minimal interview data with failsafe defaults
+      // Create interview data with provided details or defaults
       const interviewData = {
         passkey: newPasskey,
-        company: company || "Free Trial",
+        company: company || "Interview",
         job_role: jobRole || "General Interview",
-        interview_date: "",
-        interview_time: "",
+        interview_date: date ? format(date, 'PPP') : "",
+        interview_time: time || "",
         user_id: user.uid,
         created_at: Timestamp.now(),
-        is_used: false
+        is_used: false,
+        payment_id: paymentId || "free"
       };
       
       // Save to Firestore with error handling
@@ -614,12 +625,16 @@ const CopilotSection = () => {
       setGeneratedPasskey(newPasskey);
       localStorage.setItem("generatedPasskey", newPasskey);
       
+      // Close payment popup if it's open
+      setShowPaymentPopup(false);
+      setShowRazorpayForm(false);
+      
       toast({
-        title: "Free Passkey Generated",
-        description: "Your free passkey has been generated successfully!",
+        title: paymentId ? "Payment Successful" : "Free Passkey Generated",
+        description: "Your interview passkey has been generated successfully!",
       });
     } catch (error) {
-      console.error("Bunny passkey generation error:", error);
+      console.error("Passkey generation error:", error);
       setIsLoading(false); // Reset loading state on error
       toast({
         title: "Error",
@@ -666,285 +681,284 @@ const CopilotSection = () => {
             className="bg-background rounded-lg shadow-lg max-w-md w-full p-6"
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Complete Payment</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0 rounded-full"
-                onClick={() => setShowPaymentPopup(false)}
-              >
-                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-                <span className="sr-only">Close</span>
-              </Button>
+              <h3 className="text-xl font-semibold">{showRazorpayForm ? `Complete Payment - ₹${flipCardAmount}` : "Complete Payment"}</h3>
+              {showRazorpayForm ? (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="flex items-center gap-1"
+                  onClick={() => setShowRazorpayForm(false)}
+                >
+                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                  </svg>
+                  <span>Back</span>
+                </Button>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 rounded-full"
+                  onClick={() => setShowPaymentPopup(false)}
+                >
+                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                  <span className="sr-only">Close</span>
+                </Button>
+              )}
             </div>
             
-            <div className="space-y-4">
-              <div className="bg-muted p-4 rounded-md">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">
-                    {isGenzPlan 
-                      ? "Interview Passkey (Additional)" 
-                      : "Interview Passkey"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">
-                      {couponApplied && (
-                        discountPercentage === 100 ? (
-                          <>
-                            <span className="line-through text-muted-foreground mr-2">₹299</span>
-                            ₹0
-                          </>
-                        ) : 
-                        discountPercentage === 99.67 ? (
-                          <>
-                            <span className="line-through text-muted-foreground mr-2">₹299</span>
-                            ₹1
-                          </>
-                        ) :
-                        discountPercentage === 84 ? (
-                          <>
-                            <span className="line-through text-muted-foreground mr-2">₹299</span>
-                            ₹49
-                          </>
-                        ) : "₹299"
-                      ) || (!couponApplied && "₹299")}
+            <div className="relative w-full h-full" style={{ perspective: '1000px' }}>
+              <motion.div 
+                className="w-full space-y-4"
+                initial={false}
+                animate={{
+                  rotateY: showRazorpayForm ? 180 : 0,
+                  opacity: showRazorpayForm ? 0 : 1,
+                  display: showRazorpayForm ? 'none' : 'block'
+                }}
+                transition={{ duration: 0.5 }}
+              >
+                <div className="bg-muted p-4 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">
+                      {isGenzPlan 
+                        ? "Interview Passkey (Additional)" 
+                        : "Interview Passkey"}
                     </span>
-                    {couponApplied && (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
-                        {discountPercentage === 100 ? "100% OFF" : 
-                         discountPercentage === 99.67 ? "99.67% OFF" : 
-                         "84% OFF"}
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">
+                        {couponApplied && (
+                          discountPercentage === 100 ? (
+                            <>
+                              <span className="line-through text-muted-foreground mr-2">₹299</span>
+                              ₹0
+                            </>
+                          ) : 
+                          discountPercentage === 99.67 ? (
+                            <>
+                              <span className="line-through text-muted-foreground mr-2">₹299</span>
+                              ₹1
+                            </>
+                          ) :
+                          discountPercentage === 84 ? (
+                            <>
+                              <span className="line-through text-muted-foreground mr-2">₹299</span>
+                              ₹49
+                            </>
+                          ) : "₹299"
+                        ) || (!couponApplied && "₹299")}
                       </span>
-                    )}
+                      {couponApplied && (
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
+                          {discountPercentage === 100 ? "100% OFF" : 
+                           discountPercentage === 99.67 ? "99.67% OFF" : 
+                           "84% OFF"}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                {isGenzPlan && interviewsRemaining === 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    You've used all 5 interviews included in your Genz plan this month
-                  </div>
-                )}
-                {couponApplied && (
-                  <div className="flex justify-between items-center text-sm mt-2">
-                    <span className="text-muted-foreground">Discount ({discountPercentage}%)</span>
-                    <span className="text-green-600">
-                      {discountPercentage === 100 ? '-₹299' : 
-                       discountPercentage === 99.67 ? '-₹298' : 
-                       '-₹250'}
+                  {isGenzPlan && interviewsRemaining === 0 && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      You've used all 5 interviews included in your Genz plan this month
+                    </div>
+                  )}
+                  {couponApplied && (
+                    <div className="flex justify-between items-center text-sm mt-2">
+                      <span className="text-muted-foreground">Discount ({discountPercentage}%)</span>
+                      <span className="text-green-600">
+                        {discountPercentage === 100 ? '-₹299' : 
+                         discountPercentage === 99.67 ? '-₹298' : 
+                         '-₹250'}
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t my-2"></div>
+                  <div className="flex justify-between items-center font-semibold">
+                    <span>Total</span>
+                    <span className="text-primary">
+                      {discountPercentage === 100 ? "₹0" : 
+                       discountPercentage === 99.67 ? "₹1" :
+                       discountPercentage === 84 ? "₹49" : "₹299"}
                     </span>
                   </div>
-                )}
-                <div className="border-t my-2"></div>
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Total</span>
-                  <span className="text-primary">
-                    {discountPercentage === 100 ? "₹0" : 
-                     discountPercentage === 99.67 ? "₹1" :
-                     discountPercentage === 84 ? "₹49" : "₹299"}
-                  </span>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Payment Method</Label>
-                <div className="w-full">
-                  <div className="border rounded-md p-3 flex items-center space-x-2 cursor-pointer bg-muted/50">
-                    <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-primary"></div>
+                
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <div className="w-full">
+                    <div className="border rounded-md p-3 flex items-center space-x-2 cursor-pointer bg-muted/50">
+                      <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center">
+                        <div className="h-2 w-2 rounded-full bg-primary"></div>
+                      </div>
+                      <span className="text-sm font-medium">UPI</span>
                     </div>
-                    <span className="text-sm font-medium">UPI</span>
                   </div>
                 </div>
-              </div>
-              
-              <div className="pt-4">
-                <Button 
-                  className="w-full" 
-                  onClick={() => {
-                    // If 100% discount, skip payment processing
-                    if (discountPercentage === 100) {
-                      // Skip validation here and proceed with direct passkey generation
-                      setPaymentComplete(true);
-                      setShowPaymentPopup(false);
-                      
-                      // Use direct passkey generation for Bunny coupon
-                      handleBunnyPasskeyGeneration();
-                      return;
-                    }
-                    
-                    // Otherwise, open the appropriate Razorpay payment link
-                    let paymentLink = "https://rzp.io/rzp/rt6WXZL"; // Default ₹299 link
-                    let paymentButtonId = "pl_rt6WXZL"; // Default ₹299 button ID
-                    
-                    if (couponApplied) {
-                      if (discountPercentage === 84) {
-                        paymentLink = "https://rzp.io/rzp/i6i8F9o"; // ₹49 link for CRACKNOW
-                        paymentButtonId = "pl_i6i8F9o"; // ₹49 button ID for CRACKNOW
-                      } else if (discountPercentage === 99.67) {
-                        paymentLink = "https://rzp.io/rzp/zfhkX5h5"; // ₹1 link for SRIDURGA
-                        paymentButtonId = "pl_QXZsxLHhndMZPh"; // ₹1 button ID for SRIDURGA
-                      }
-                    }
-                    
-                    setPaymentProcessing(true);
-                    
-                    // For SriDurga coupon (₹1), use the custom Razorpay button
-                    if (discountPercentage === 99.67) {
-                      // Open the custom Razorpay payment page in a new window
-                      const paymentWindow = window.open('', '_blank');
-                      
-                      if (paymentWindow) {
-                        // Get the current origin for the redirect URL
-                        const currentOrigin = window.location.origin;
-                        const redirectUrl = `${currentOrigin}/?payment_status=success&source=sridurga`;
+                
+                <div className="pt-4">
+                  <Button 
+                    className="w-full" 
+                    onClick={() => {
+                      // If 100% discount, skip payment processing
+                      if (discountPercentage === 100) {
+                        // Skip validation here and proceed with direct passkey generation
+                        setPaymentComplete(true);
+                        setShowPaymentPopup(false);
                         
-                        // Create the payment page content with the custom Razorpay button
-                        const paymentPageContent = `
-                          <!DOCTYPE html>
-                          <html>
-                          <head>
-                            <title>Complete Payment - ₹1</title>
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <style>
-                              body {
-                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-                                display: flex;
-                                justify-content: center;
-                                align-items: center;
-                                height: 100vh;
-                                margin: 0;
-                                background-color: #f9fafb;
-                              }
-                              .payment-container {
-                                background-color: white;
-                                border-radius: 8px;
-                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                                padding: 24px;
-                                width: 100%;
-                                max-width: 400px;
-                                text-align: center;
-                              }
-                              h2 {
-                                margin-top: 0;
-                                color: #111827;
-                              }
-                              p {
-                                color: #6b7280;
-                                margin-bottom: 24px;
-                              }
-                              .razorpay-button {
-                                margin-top: 16px;
-                              }
-                              .price-display {
-                                font-size: 24px;
-                                font-weight: bold;
-                                color: #111827;
-                                margin: 16px 0;
-                              }
-                              .original-price {
-                                text-decoration: line-through;
-                                color: #9ca3af;
-                                margin-right: 8px;
-                              }
-                              .discount-badge {
-                                background-color: #dcfce7;
-                                color: #166534;
-                                font-size: 12px;
-                                padding: 4px 8px;
-                                border-radius: 9999px;
-                                margin-left: 8px;
-                                font-weight: 500;
-                              }
-                            </style>
-                            <script>
-                              // Listen for messages from the payment iframe
-                              window.addEventListener('message', function(e) {
-                                // Check if it's a payment success message
-                                if (e.data && e.data.razorpay_payment_id) {
-                                  // Redirect to the main app with success parameters
-                                  window.opener.location.href = '${redirectUrl}&razorpay_payment_id=' + e.data.razorpay_payment_id;
-                                  // Close this window
-                                  setTimeout(() => window.close(), 1000);
-                                }
+                        // Use direct passkey generation for Bunny coupon
+                        handlePasskeyGeneration();
+                        return;
+                      }
+                      
+                      // Set payment parameters based on discount
+                      let amount = "299";
+                      let buttonId = "pl_QXdXxHe95BDHgu"; // Default 299 INR button ID
+                      
+                      // For SriDurga coupon (₹1)
+                      if (discountPercentage === 99.67) {
+                        console.log('SriDurga coupon detected, discount:', discountPercentage);
+                        amount = "1";
+                        buttonId = "pl_QXbDxJ0azbF0a3"; // SriDurga 1 INR button ID
+                      }
+                      // For CRACKNOW coupon (₹49)
+                      else if (couponApplied && discountPercentage === 84) {
+                        amount = "49";
+                        buttonId = "pl_QXdVt9aEiAT7VX"; // 49 INR button ID
+                      }
+                      
+                      // Initialize Razorpay directly without flipping
+                      setPaymentProcessing(true);
+                      
+                      // Load Razorpay script if not already loaded
+                      if (!window.Razorpay) {
+                        const script = document.createElement('script');
+                        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                        script.async = true;
+                        script.onload = () => {
+                          // Use the razorpayHelper utility to open checkout
+                          openRazorpayCheckout(
+                            amount,
+                            buttonId,
+                            (paymentId) => {
+                              // On success callback
+                              handlePasskeyGeneration(paymentId);
+                            },
+                            () => {
+                              // On cancel callback
+                              toast({
+                                title: "Payment Cancelled",
+                                description: "You can try again when you're ready.",
                               });
-                            </script>
-                          </head>
-                          <body>
-                            <div class="payment-container">
-                              <h2>Complete Your Payment</h2>
-                              <p>You're just one step away from getting your interview passkey</p>
-                              
-                              <div class="price-display">
-                                <span class="original-price">₹299</span>
-                                ₹1
-                                <span class="discount-badge">99.67% OFF</span>
-                              </div>
-                              
-                              <div class="razorpay-button">
-                                <form><script src="https://checkout.razorpay.com/v1/payment-button.js" data-payment_button_id="pl_QXbDxJ0azbF0a3" async> </script></form>
-                              </div>
-                            </div>
-                          </body>
-                          </html>
-                        `;
-                        
-                        // Write the content to the new window
-                        paymentWindow.document.open();
-                        paymentWindow.document.write(paymentPageContent);
-                        paymentWindow.document.close();
+                            },
+                            setPaymentProcessing,
+                            toast
+                          );
+                        };
+                        document.body.appendChild(script);
                       } else {
-                        // If popup was blocked, show a message to the user
-                        toast({
-                          title: "Popup Blocked",
-                          description: "Please allow popups for this site to complete the payment.",
-                          variant: "destructive",
-                        });
+                        // Use the razorpayHelper utility to open checkout
+                        openRazorpayCheckout(
+                          amount,
+                          buttonId,
+                          (paymentId) => {
+                            // On success callback
+                            handlePasskeyGeneration(paymentId);
+                          },
+                          () => {
+                            // On cancel callback
+                            toast({
+                              title: "Payment Cancelled",
+                              description: "You can try again when you're ready.",
+                            });
+                          },
+                          setPaymentProcessing,
+                          toast
+                        );
                       }
-                      
-                      // Show toast notification
-                      toast({
-                        title: "Payment Initiated",
-                        description: "Complete the payment in the new window to generate your passkey.",
-                      });
-                      
-                      setPaymentProcessing(false);
-                    } else {
-                      // For other coupons, use the existing direct link approach
-                      window.open(paymentLink, "_blank");
-                      
-                      toast({
-                        title: "Payment Initiated",
-                        description: "Complete the payment in the new window to generate your passkey.",
-                      });
-                      
-                      setPaymentProcessing(false);
-                    }
-                    
-                    // Don't close the payment popup immediately
-                    // It will be closed after successful payment via URL parameters
-                  }}
-                  disabled={paymentProcessing}
-                >
-                  {paymentProcessing ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    discountPercentage === 100 ? 
-                    "Generate Passkey - Free" : 
-                    `Pay Now - ${discountPercentage === 99.67 ? "₹1" : discountPercentage === 84 ? "₹49" : "₹299"}`
-                  )}
-                </Button>
-              </div>
+                    }}
+                    disabled={paymentProcessing}
+                  >
+                    {paymentProcessing ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      discountPercentage === 100 ? 
+                      "Generate Passkey - Free" : 
+                      `Pay Now - ${discountPercentage === 99.67 ? "₹1" : discountPercentage === 84 ? "₹49" : "₹299"}`
+                    )}
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  By proceeding, you agree to our Terms of Service and Privacy Policy.
+                </p>
+              </motion.div>
               
-              <p className="text-xs text-muted-foreground text-center">
-                By proceeding, you agree to our Terms of Service and Privacy Policy.
-              </p>
+              {/* Razorpay Payment Form (Back side of the card) */}
+              <motion.div 
+                className="absolute top-0 left-0 w-full space-y-4"
+                initial={false}
+                animate={{
+                  rotateY: showRazorpayForm ? 0 : -180,
+                  opacity: showRazorpayForm ? 1 : 0,
+                  display: showRazorpayForm ? 'block' : 'none'
+                }}
+                transition={{ duration: 0.5 }}
+                style={{ backfaceVisibility: 'hidden', transform: showRazorpayForm ? 'rotateY(0deg)' : 'rotateY(-180deg)' }}
+              >
+                <div className="bg-muted p-4 rounded-md">
+                  <div className="text-center">
+                    <h3 className="font-semibold mb-2">
+                      {`Complete Payment - ₹${flipCardAmount}`}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      You're just one step away from getting your interview passkey
+                    </p>
+                    
+                    <div className="w-full space-y-4">
+                      <DirectRazorpayPayment
+                        amount={flipCardAmount}
+                        buttonId={razorpayButtonId}
+                        onSuccess={(paymentId) => {
+                          console.log('Payment success callback triggered with ID:', paymentId);
+                          
+                          // Generate passkey directly after payment instead of redirecting
+                          handlePasskeyGeneration(paymentId);
+                        }}
+                        onCancel={() => {
+                          setShowRazorpayForm(false);
+                          toast({
+                            title: "Payment Cancelled",
+                            description: "You can try again when you're ready.",
+                          });
+                        }}
+                      />
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground text-center mt-4">
+                      By proceeding, you agree to our Terms of Service and Privacy Policy.
+                    </p>
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-4"
+                      onClick={() => {
+                        setShowRazorpayForm(false);
+                      }}
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </motion.div>
         </div>
@@ -972,7 +986,7 @@ const CopilotSection = () => {
           
           <Button 
             onClick={() => setShowPasskeyForm(true)} 
-            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold py-6 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-lg"
+            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold py-6 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-lg dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 dark:border dark:border-gray-200 dark:shadow-white/10"
           >
             <motion.div
               initial={{ scale: 1 }}
@@ -1082,24 +1096,22 @@ const CopilotSection = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="jobRole">Job Role</Label>
-                    <Input
-                      id="jobRole"
-                      placeholder="Software Engineer, Designer, etc."
-                      value={jobRole}
-                      onChange={(e) => setJobRole(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company">Company</Label>
-                    <Input
-                      id="company"
-                      placeholder="Google, Facebook, etc."
-                      value={company}
-                      onChange={(e) => setCompany(e.target.value)}
-                    />
-                  </div>
+                  <Autocomplete
+                    label="Job Role"
+                    id="jobRole"
+                    placeholder="Software Engineer, Designer, etc."
+                    suggestions={jobRoles}
+                    value={jobRole}
+                    onChange={(value) => setJobRole(value)}
+                  />
+                  <Autocomplete
+                    label="Company"
+                    id="company"
+                    placeholder="Google, Facebook, etc."
+                    suggestions={companies}
+                    value={company}
+                    onChange={(value) => setCompany(value)}
+                  />
                 </div>
 
                 <div className="space-y-2">

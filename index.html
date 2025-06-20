@@ -4,18 +4,86 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Greecode</title>
-    <meta name="description" content="Greecode - AI-powered interview assistant for technical interviews" />
-    <meta name="author" content="Lovable" />
-
-    <meta property="og:title" content="Greecode" />
-    <meta property="og:description" content="Greecode - AI-powered interview assistant for technical interviews" />
+    <title>Greecode - AI-Powered Technical Interview Assistant</title>
+    <meta name="description" content="Greecode helps you ace technical interviews with AI-powered interview practice, real-time feedback, and personalized coaching. Prepare for coding interviews at top tech companies." />
+    <meta name="keywords" content="greecode, coding interview, technical interview, interview preparation, coding practice, programming interview, AI interview coach, interview passkey, interview simulator" />
+    <meta name="author" content="Greecode.in" />
+    <!-- This allows both www and non-www versions to work for users -->
+    <script type="text/javascript">
+      // Set canonical URL to match the current URL (www or non-www)
+      document.write('<link rel="canonical" href="' + window.location.href.split('?')[0].split('#')[0] + '" />');
+    </script>
+    
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
+    <script type="text/javascript">
+      // Set og:url to match the current URL
+      document.write('<meta property="og:url" content="' + window.location.href.split('?')[0].split('#')[0] + '" />');
+    </script>
+    <meta property="og:title" content="Greecode - AI-Powered Technical Interview Assistant" />
+    <meta property="og:description" content="Prepare for coding interviews with AI-powered practice, real-time feedback, and personalized coaching. Get ready for tech interviews at top companies." />
+    <script type="text/javascript">
+      // Set og:image to match the current domain
+      document.write('<meta property="og:image" content="' + window.location.protocol + '//' + window.location.host + '/opengraph-image.png" />');
+    </script>
+    <meta property="og:site_name" content="Greecode" />
+    
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <script type="text/javascript">
+      // Set twitter:url to match the current URL
+      document.write('<meta name="twitter:url" content="' + window.location.href.split('?')[0].split('#')[0] + '" />');
+    </script>
+    <meta name="twitter:title" content="Greecode - AI-Powered Technical Interview Assistant" />
+    <meta name="twitter:description" content="Prepare for coding interviews with AI-powered practice, real-time feedback, and personalized coaching." />
+    <script type="text/javascript">
+      // Set twitter:image to match the current domain
+      document.write('<meta name="twitter:image" content="' + window.location.protocol + '//' + window.location.host + '/opengraph-image.png" />');
+    </script>
+    
+    <!-- Structured Data - Organization -->
+    <script type="text/javascript">
+      // Generate dynamic JSON-LD for Organization
+      var orgData = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Greecode",
+        "url": window.location.protocol + '//' + window.location.host,
+        "logo": window.location.protocol + '//' + window.location.host + "/logo.png",
+        "description": "AI-powered technical interview assistant for coding interviews",
+        "sameAs": [
+          "https://twitter.com/greecode",
+          "https://linkedin.com/company/greecode"
+        ]
+      };
+      
+      var jsonLdOrg = document.createElement('script');
+      jsonLdOrg.type = 'application/ld+json';
+      jsonLdOrg.text = JSON.stringify(orgData);
+      document.head.appendChild(jsonLdOrg);
+    </script>
+    
+    <!-- Structured Data - WebSite -->
+    <script type="text/javascript">
+      // Generate dynamic JSON-LD for Website
+      var websiteData = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "url": window.location.protocol + '//' + window.location.host,
+        "name": "Greecode",
+        "description": "AI-powered technical interview assistant for coding interviews",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": window.location.protocol + '//' + window.location.host + "/search?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      };
+      
+      var jsonLdWebsite = document.createElement('script');
+      jsonLdWebsite.type = 'application/ld+json';
+      jsonLdWebsite.text = JSON.stringify(websiteData);
+      document.head.appendChild(jsonLdWebsite);
+    </script>
   </head>
 
   <body>

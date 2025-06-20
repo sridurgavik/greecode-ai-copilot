@@ -5,9 +5,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthPage from "@/pages/AuthPage";
 import MainApp from "@/pages/MainApp";
+import HelpSupport from "@/pages/HelpSupport";
 import PaymentSuccess from "@/pages/payment-success";
 import PaymentFailed from "@/pages/payment-failed";
+import PaymentFailure from "@/pages/payment-failure";
+import PasskeyGeneration from "@/pages/passkey-generation";
 import RescheduleInterview from "@/pages/reschedule-interview";
+import NotFoundPage from "@/pages/404";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/integrations/firebase/client";
 
@@ -105,7 +109,7 @@ const App = () => {
   }
 
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="greecode-theme">
+    <ThemeProvider defaultTheme="light" storageKey="greecode-theme">
       <Router>
         <div className="min-h-screen bg-background text-foreground">
           {isAuthenticated ? (
@@ -113,11 +117,19 @@ const App = () => {
               <Route path="/" element={<MainApp onLogout={handleLogout} />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/payment-failed" element={<PaymentFailed />} />
+              <Route path="/payment-failure" element={<PaymentFailure />} />
+              <Route path="/passkey-generation" element={<PasskeyGeneration />} />
               <Route path="/reschedule-interview" element={<RescheduleInterview />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/help-support" element={<HelpSupport />} />
+              <Route path="/404" element={<NotFoundPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           ) : (
-            <AuthPage onLoginSuccess={handleLoginSuccess} />
+            <Routes>
+              <Route path="/" element={<AuthPage onLoginSuccess={handleLoginSuccess} />} />
+              <Route path="/404" element={<NotFoundPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
           )}
           <Toaster />
         </div>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageCircle, Send, Copy, Play, Pause, RotateCcw, Clock, CheckCircle2 } from "lucide-react";
 import axios from "axios";
+import { enhanceSystemMessage } from "@/utils/profileHelper";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -455,6 +456,9 @@ const GroqChat = () => {
     const apiKey = "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";
     
     try {
+      // Enhance system message with profile information if relevant
+      const enhancedSystemMessage = await enhanceSystemMessage(userInput, systemMessage);
+      
       const response = await axios.post(
         "https://api.groq.com/openai/v1/chat/completions",
         {
@@ -462,7 +466,7 @@ const GroqChat = () => {
           messages: [
             {
               role: "system",
-              content: systemMessage
+              content: enhancedSystemMessage
             },
             ...messages.map(msg => ({
               role: msg.role,

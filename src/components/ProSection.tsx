@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -6,11 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, FileText, Copy, BookOpen, Search, Github, Linkedin, Upload, Check, X, ExternalLink } from "lucide-react";
+import ATSChecker from "./ATSChecker";
 import GroqChat from "./GroqChat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { auth, db } from "@/integrations/firebase/client";
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { supabase } from "@/integrations/supabase/client";
 
 // Helper function to safely interact with Chrome API
@@ -60,6 +60,7 @@ const ProSection = () => {
   const [aiResponse, setAiResponse] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("chat");
+  const [showATSDialog, setShowATSDialog] = useState(false);
   const [githubUrl, setGithubUrl] = useState<string>("");
   const [linkedinUrl, setLinkedinUrl] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -80,22 +81,43 @@ const ProSection = () => {
   useEffect(() => {
     // Listen for the startInterviewPractice event
     const handleStartInterviewPractice = () => {
+      console.log('startInterviewPractice event received');
       setActiveTab("chat");
     };
 
     // Listen for the setProSectionTab event
-    const handleSetProSectionTab = (event: CustomEvent) => {
-      if (event.detail && event.detail.tab) {
-        setActiveTab(event.detail.tab);
+    const handleSetProSectionTab = (event: any) => {
+      console.log('setProSectionTab event received:', event);
+      
+      try {
+        if (event.detail && event.detail.tab) {
+          const tabValue = event.detail.tab;
+          console.log('Setting active tab to:', tabValue);
+          
+          // Validate that the tab value is one of the available tabs
+          if (tabValue === 'chat' || tabValue === 'dashboard') {
+            setActiveTab(tabValue);
+          } else {
+            console.error('Invalid tab value:', tabValue);
+          }
+        } else {
+          console.error('Invalid event detail structure:', event.detail);
+        }
+      } catch (error) {
+        console.error('Error handling setProSectionTab event:', error);
       }
     };
 
+    // Add event listeners with explicit type casting
     window.addEventListener("startInterviewPractice", handleStartInterviewPractice);
-    window.addEventListener("setProSectionTab", handleSetProSectionTab as EventListener);
+    window.addEventListener("setProSectionTab", handleSetProSectionTab);
+
+    // For debugging - log the current active tab whenever it changes
+    console.log('ProSection mounted, activeTab:', activeTab);
 
     return () => {
       window.removeEventListener("startInterviewPractice", handleStartInterviewPractice);
-      window.removeEventListener("setProSectionTab", handleSetProSectionTab as EventListener);
+      window.removeEventListener("setProSectionTab", handleSetProSectionTab);
     };
   }, []);
 
@@ -112,21 +134,32 @@ const ProSection = () => {
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            setGithubUrl(userData.github_url || "");
-            setLinkedinUrl(userData.linkedin_url || "");
-            setIsGithubVerified(userData.is_github_verified || false);
-            setIsLinkedinVerified(userData.is_linkedin_verified || false);
+            
+            // Load GitHub and LinkedIn data
+            if (userData.github_url) {
+              setGithubUrl(userData.github_url);
+              setIsGithubVerified(userData.is_github_verified || false);
+            }
+            
+            if (userData.linkedin_url) {
+              setLinkedinUrl(userData.linkedin_url);
+              setIsLinkedinVerified(userData.is_linkedin_verified || false);
+            }
+            
+            // Load passkeys (previous interviews)
+            const passkeys = userData.passkeys || [];
+            setPreviousInterviews(passkeys);
           }
           
-          // Load previous interviews
-          const { data: passkeys } = await supabase
+          // Also fetch interview history from Supabase if needed
+          const { data: supabasePasskeys } = await supabase
             .from("passkeys")
             .select("*")
             .eq("user_id", user.uid)
             .order("created_at", { ascending: false });
             
-          if (passkeys) {
-            setPreviousInterviews(passkeys);
+          if (supabasePasskeys && supabasePasskeys.length > 0) {
+            setPreviousInterviews(prev => [...prev, ...supabasePasskeys]);
           }
         }
       } catch (error) {
@@ -151,19 +184,40 @@ const ProSection = () => {
       const user = auth.currentUser;
       
       if (user) {
+        // Check if the profile document exists, if not create it
         const userDocRef = doc(db, "profiles", user.uid);
-        await updateDoc(userDocRef, {
+        const userDoc = await getDoc(userDocRef);
+        
+        const profileData = {
           github_url: githubUrl,
           linkedin_url: linkedinUrl,
           // Reset verification status if URLs are edited
           is_github_verified: isEditingGithub ? false : isGithubVerified,
           is_linkedin_verified: isEditingLinkedin ? false : isLinkedinVerified,
           updated_at: new Date().toISOString(),
-        });
+        };
+        
+        if (!userDoc.exists()) {
+          // Create new profile document
+          await setDoc(userDocRef, {
+            ...profileData,
+            user_id: user.uid,
+            email: user.email,
+            display_name: user.displayName,
+            created_at: new Date().toISOString(),
+          });
+        } else {
+          // Update existing profile document
+          await updateDoc(userDocRef, profileData);
+        }
         
         // Reset editing state
         setIsEditingGithub(false);
         setIsEditingLinkedin(false);
+        
+        // If URLs were edited and now need verification, update the state
+        if (isEditingGithub) setIsGithubVerified(false);
+        if (isEditingLinkedin) setIsLinkedinVerified(false);
         
         toast({
           title: "Profile updated",
@@ -193,10 +247,12 @@ const ProSection = () => {
   
   // Handle ATS check
   const handleCheckATS = () => {
-    // This would be implemented to check resume against ATS
+    // Open the ATS checker dialog
+    setShowATSDialog(true);
+    
     toast({
-      title: "ATS Check",
-      description: "This feature will be available soon.",
+      title: "ATS Resume Checker",
+      description: "ATS Resume Checker is ready to use.",
     });
   };
   
@@ -266,18 +322,20 @@ const ProSection = () => {
         throw new Error("Invalid GitHub URL format");
       }
       
-      // Update verification status in Firestore
+      // Update verification status and save GitHub URL in Firestore
       const userDocRef = doc(db, "profiles", user.uid);
       await updateDoc(userDocRef, {
+        github_url: githubUrl,
         is_github_verified: true,
         github_verified_at: new Date().toISOString(),
       });
       
       setIsGithubVerified(true);
+      setIsEditingGithub(false); // Exit edit mode after verification
       
       toast({
         title: "GitHub Verified",
-        description: "Your GitHub profile has been verified successfully.",
+        description: "Your GitHub profile has been verified and saved successfully.",
       });
     } catch (error: any) {
       console.error("Error verifying GitHub profile:", error);
@@ -338,18 +396,20 @@ const ProSection = () => {
         throw new Error("Invalid LinkedIn URL format");
       }
       
-      // Update verification status in Firestore
+      // Update verification status and save LinkedIn URL in Firestore
       const userDocRef = doc(db, "profiles", user.uid);
       await updateDoc(userDocRef, {
+        linkedin_url: linkedinUrl,
         is_linkedin_verified: true,
         linkedin_verified_at: new Date().toISOString(),
       });
       
       setIsLinkedinVerified(true);
+      setIsEditingLinkedin(false); // Exit edit mode after verification
       
       toast({
         title: "LinkedIn Verified",
-        description: "Your LinkedIn profile has been verified successfully.",
+        description: "Your LinkedIn profile has been verified and saved successfully.",
       });
     } catch (error: any) {
       console.error("Error verifying LinkedIn profile:", error);
@@ -779,6 +839,13 @@ const ProSection = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ATS Checker Dialog */}
+      <Dialog open={showATSDialog} onOpenChange={setShowATSDialog}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+          <ATSChecker />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

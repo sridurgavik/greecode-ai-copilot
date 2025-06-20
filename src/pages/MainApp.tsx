@@ -92,6 +92,8 @@ const MainApp = ({ onLogout }: MainAppProps) => {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Hidden H1 for SEO purposes */}
+      <h1 className="sr-only">Greecode - AI-Powered Technical Interview Assistant</h1>
       {/* Welcome Animation Overlay */}
       <AnimatePresence>
         {showWelcome && (
@@ -285,7 +287,7 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 transition={{ delay: 0.3, duration: 0.4 }}
               >
                 <div className="p-6 flex flex-col space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Greecode AI</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">Greecode</h3>
                   <p className="text-2xl font-bold">Connected</p>
                   <p className="text-sm text-muted-foreground">Real-time assistance ready</p>
                 </div>
@@ -336,12 +338,15 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                     // Set the main tab to Pro section
                     setActiveTab("pro");
                     
-                    // Set the Pro section tab to chat (AI Chat)
                     // Use a timeout to ensure the Pro section is mounted before trying to access its state
                     setTimeout(() => {
-                      // Create and dispatch a custom event to set the Pro section tab to chat
-                      const event = new CustomEvent("setProSectionTab", { detail: { tab: "chat" } });
+                      // Dispatch the startInterviewPractice event to properly set up the interview practice
+                      const event = new CustomEvent("startInterviewPractice");
                       window.dispatchEvent(event);
+                      
+                      // Also dispatch setProSectionTab event to ensure we're on the chat tab
+                      const tabEvent = new CustomEvent("setProSectionTab", { detail: { tab: "chat" } });
+                      window.dispatchEvent(tabEvent);
                     }, 100);
                   }}
                 >
@@ -378,12 +383,26 @@ const MainApp = ({ onLogout }: MainAppProps) => {
                 <button 
                   className="flex items-center space-x-3 rounded-lg border bg-card p-4 text-card-foreground shadow-sm hover:bg-accent/50 transition-colors"
                   onClick={() => {
+                    console.log('User Dashboard button clicked');
+                    // Set the main tab to Pro section
                     setActiveTab("pro");
-                    // Set a small timeout to ensure the Pro tab is active before setting the dashboard tab
+                    console.log('Set active tab to pro');
+                    
+                    // Use a longer timeout to ensure the Pro section is fully mounted before trying to access its state
                     setTimeout(() => {
-                      const dashboardEvent = new CustomEvent("setDashboardTab", { detail: { tab: "dashboard" } });
-                      window.dispatchEvent(dashboardEvent);
-                    }, 100);
+                      console.log('Dispatching setProSectionTab event with tab: dashboard');
+                      // Dispatch the setProSectionTab event to navigate to the dashboard tab
+                      const event = new CustomEvent("setProSectionTab", { detail: { tab: "dashboard" } });
+                      window.dispatchEvent(event);
+                      console.log('Event dispatched');
+                      
+                      // Add a second dispatch with a slightly longer delay as a backup
+                      setTimeout(() => {
+                        console.log('Dispatching backup setProSectionTab event');
+                        const backupEvent = new CustomEvent("setProSectionTab", { detail: { tab: "dashboard" } });
+                        window.dispatchEvent(backupEvent);
+                      }, 200);
+                    }, 300);
                   }}
                 >
                   <div className="rounded-full bg-primary/10 p-2">
@@ -476,12 +495,15 @@ const MainApp = ({ onLogout }: MainAppProps) => {
             <Button 
               variant="outline" 
               className="w-full justify-start text-left font-normal"
-              onClick={() => window.open('#', '_blank')}
+              onClick={() => {
+                // Navigate to Help & Support page
+                window.location.href = '/help-support';
+              }}
             >
               <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
               </svg>
               Help & Support
             </Button>
